@@ -31,6 +31,56 @@ router.get('/', verifyToken, async (req, res, next) => {
   }
 });
 
+// GET /api/produccion/:id
+router.get('/:id', verifyToken, async (req, res, next) => {
+  try {
+    const orden = await get(`
+      SELECT p.*,
+             r.nombre as receta_nombre,
+             r.descripcion as receta_descripcion,
+             r.tiempo_estimado_min,
+             prod.nombre as producto_nombre,
+             prod.codigo as producto_codigo,
+             u.simbolo as unidad_simbolo,
+             d_orig.nombre as deposito_origen,
+             d_dest.nombre as deposito_destino,
+             usr.nombre as usuario_nombre
+      FROM producciones p
+      JOIN recetas r ON p.receta_id = r.id
+      JOIN productos prod ON p.producto_terminado_id = prod.id
+      JOIN depositos d_orig ON p.deposito_origen_id = d_orig.id
+      JOIN depositos d_dest ON p.deposito_destino_id = d_dest.id
+      JOIN usuarios usr ON p.usuario_id = usr.id
+      WHERE p.id = ?
+    `, [req.params.id]);
+
+    if (!orden) {
+      return res.status(404).json({ success: false, message: 'Orden de producción no encontrada' });
+    }
+
+    // Insumos consumidos por la receta
+    const insumosConsumidos = await all(`
+      SELECT rd.*,
+             p.nombre as insumo_nombre,
+             p.codigo as insumo_codigo,
+             p.precio_costo as insumo_costo,
+             u.simbolo as unidad_simbolo
+      FROM recetas_detalles rd
+      JOIN productos p ON rd.insumo_id = p.id
+      LEFT JOIN unidades_medida u ON p.unidad_id = u.id
+      WHERE rd.receta_id = ?
+    `, [orden.receta_id]);
+
+    res.json({
+      success: true,
+      orden,
+      insumosConsumidos
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/produccion/ejecutar
 router.post('/ejecutar', verifyToken, checkRole(['admin', 'produccion', 'deposito']), async (req, res, next) => {
   try {

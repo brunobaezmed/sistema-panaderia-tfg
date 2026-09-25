@@ -100,6 +100,24 @@ router.get('/stats', verifyToken, async (req, res, next) => {
       ORDER BY fecha ASC
     `);
 
+    // 9. Órdenes de producción recientes
+    const ultimasProducciones = await all(`
+      SELECT p.*,
+             r.nombre as receta_nombre,
+             prod.nombre as producto_nombre,
+             prod.codigo as producto_codigo,
+             u.simbolo as unidad_simbolo,
+             d_dest.nombre as deposito_destino,
+             usr.nombre as usuario_nombre
+      FROM producciones p
+      JOIN recetas r ON p.receta_id = r.id
+      JOIN productos prod ON p.producto_terminado_id = prod.id
+      JOIN depositos d_dest ON p.deposito_destino_id = d_dest.id
+      JOIN usuarios usr ON p.usuario_id = usr.id
+      ORDER BY p.id DESC
+      LIMIT 6
+    `);
+
     res.json({
       success: true,
       stats: {
@@ -110,13 +128,15 @@ router.get('/stats', verifyToken, async (req, res, next) => {
         ventasHoy,
         ventasMes,
         alertaStockBajoCount: productosStockBajo.length,
-        alertaVencimientoCount: lotesPorVencer.length
+        alertaVencimientoCount: lotesPorVencer.length,
+        totalProduccionesCount: ultimasProducciones.length
       },
       productosStockBajo,
       lotesPorVencer,
       ultimosMovimientos,
       topVendidos,
-      ventasUltimos7Dias
+      ventasUltimos7Dias,
+      ultimasProducciones
     });
   } catch (err) {
     next(err);

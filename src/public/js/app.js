@@ -231,6 +231,35 @@ async function cargarDashboard() {
       }).join('');
     }
 
+    // Dashboard Production Orders Table
+    const tbodyDashProd = document.getElementById('tablaDashboardProduccion');
+    const ultimasProd = res.ultimasProducciones || [];
+    if (tbodyDashProd) {
+      if (ultimasProd.length === 0) {
+        tbodyDashProd.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3"><i class="fa-solid fa-fire me-1"></i> No hay horneadas registradas hoy. Haga clic en los botones superiores para hornear.</td></tr>';
+      } else {
+        tbodyDashProd.innerHTML = ultimasProd.map(o => `
+          <tr>
+            <td><code>${o.codigo}</code></td>
+            <td><small>${API.formatFecha(o.fecha_produccion)}</small></td>
+            <td class="fw-bold text-dark">${o.receta_nombre}</td>
+            <td><span class="badge bg-success-subtle text-success fs-6 fw-bold">${o.cantidad_obtenida} ${o.unidad_simbolo || ''}</span></td>
+            <td><small class="text-muted">${o.deposito_destino}</small></td>
+            <td class="fw-bold text-primary">${API.formatGs(o.costo_total)}</td>
+            <td><small class="text-muted">${o.usuario_nombre}</small></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="verDetalleOrdenProduccion(${o.id})" title="Ver insumos descontados">
+                <i class="fa-solid fa-eye me-1"></i> Detalle
+              </button>
+              <button class="btn btn-sm btn-outline-warning py-0 px-2 text-dark" onclick="iniciarHorneadaDesdeReceta(${o.receta_id})" title="Hornear otra tanda">
+                <i class="fa-solid fa-fire me-1"></i> Re-Hornear
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
     // Render Chart.js
     renderVentasChart(ventasUltimos7Dias);
   } catch (err) {
@@ -721,18 +750,26 @@ async function cargarProduccionView() {
     const tbodyHist = document.getElementById('tablaHistorialProduccion');
     const ordenes = resOrd.ordenes || [];
     if (ordenes.length === 0) {
-      tbodyHist.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay órdenes de producción registradas</td></tr>';
+      tbodyHist.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No hay órdenes de producción registradas</td></tr>';
       return;
     }
 
     tbodyHist.innerHTML = ordenes.map(o => `
       <tr>
         <td><code>${o.codigo}</code></td>
-        <td>${API.formatFecha(o.fecha_produccion)}</td>
+        <td><small>${API.formatFecha(o.fecha_produccion)}</small></td>
         <td class="fw-bold">${o.receta_nombre}</td>
-        <td><span class="badge bg-success-subtle text-success">${o.cantidad_obtenida} ${o.unidad_simbolo || ''}</span></td>
+        <td><span class="badge bg-success-subtle text-success fs-6">${o.cantidad_obtenida} ${o.unidad_simbolo || ''}</span></td>
         <td>${API.formatGs(o.costo_total)}</td>
         <td><small class="text-muted">${o.usuario_nombre}</small></td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="verDetalleOrdenProduccion(${o.id})" title="Ver insumos consumidos">
+            <i class="fa-solid fa-eye me-1"></i> Detalle
+          </button>
+          <button class="btn btn-sm btn-outline-warning py-0 px-2 text-dark" onclick="iniciarHorneadaDesdeReceta(${o.receta_id})" title="Hornear otra tanda de esta receta">
+            <i class="fa-solid fa-fire me-1"></i> Re-Hornear
+          </button>
+        </td>
       </tr>
     `).join('');
   } catch (err) {
@@ -789,8 +826,98 @@ async function cargarDetalleInsumosProduccion() {
 
 function iniciarHorneadaDesdeReceta(recetaId) {
   navigate('produccion');
-  document.getElementById('prodRecetaId').value = recetaId;
-  cargarDetalleInsumosProduccion();
+  setTimeout(() => {
+    const sel = document.getElementById('prodRecetaId');
+    if (sel) {
+      sel.value = recetaId;
+      cargarDetalleInsumosProduccion();
+    }
+  }, 100);
+}
+
+function iniciarHorneadaRapida(recetaId) {
+  iniciarHorneadaDesdeReceta(recetaId);
+}
+
+async function verDetalleOrdenProduccion(ordenId) {
+  try {
+    const res = await API.get(`/produccion/${ordenId}`);
+    if (!res.success) return;
+    const { orden, insumosConsumidos } = res;
+
+    const costoUnit = orden.cantidad_obtenida > 0 ? (orden.costo_total / orden.cantidad_obtenida) : 0;
+
+    let html = `
+      <div class="text-start">
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-3">
+          <div>
+            <h5 class="fw-bold mb-0 text-dark">${orden.codigo} - ${orden.receta_nombre}</h5>
+            <small class="text-muted">${API.formatFecha(orden.fecha_produccion)} &bull; Maestro Panadero: <strong>${orden.usuario_nombre}</strong></small>
+          </div>
+          <span class="badge bg-success fs-6">${orden.cantidad_obtenida} ${orden.unidad_simbolo || 'un'} elaborados</span>
+        </div>
+
+        <div class="row g-2 mb-3 bg-light p-2 rounded small">
+          <div class="col-6"><strong>Depósito Origen:</strong> ${orden.deposito_origen}</div>
+          <div class="col-6"><strong>Depósito Destino:</strong> ${orden.deposito_destino}</div>
+          <div class="col-6"><strong>Costo Total Insumos:</strong> <span class="text-primary fw-bold">${API.formatGs(orden.costo_total)}</span></div>
+          <div class="col-6"><strong>Costo Unitario Producido:</strong> <span class="text-success fw-bold">${API.formatGs(costoUnit)}</span></div>
+        </div>
+
+        <h6 class="fw-bold mb-2"><i class="fa-solid fa-boxes-stacked me-1 text-warning"></i> Materias Primas Descontadas del Inventario:</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered small">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Insumo</th>
+                <th>Cantidad Utilizada</th>
+                <th>Costo Unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${insumosConsumidos.map(i => {
+                const cantUtilizada = i.cantidad_requerida * (orden.cantidad_obtenida / (orden.rendimiento_unidades || 10));
+                const sub = cantUtilizada * i.insumo_costo;
+                return `
+                  <tr>
+                    <td><code>${i.insumo_codigo}</code></td>
+                    <td class="fw-bold">${i.insumo_nombre}</td>
+                    <td class="fw-bold text-danger">-${cantUtilizada.toFixed(2)} ${i.unidad_simbolo || ''}</td>
+                    <td>${API.formatGs(i.insumo_costo)}</td>
+                    <td>${API.formatGs(sub)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="table-light fw-bold">
+                <td colspan="4" class="text-end">Costo Total de Horneada:</td>
+                <td class="text-primary">${API.formatGs(orden.costo_total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    `;
+
+    Swal.fire({
+      title: 'Hoja de Producción / Horneada',
+      html,
+      width: '700px',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-fire me-1"></i> Hornear Otra Tanda',
+      cancelButtonText: 'Cerrar',
+      confirmButtonColor: '#d97706'
+    }).then(result => {
+      if (result.isConfirmed) {
+        iniciarHorneadaDesdeReceta(orden.receta_id);
+      }
+    });
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar la orden de producción', 'error');
+  }
 }
 
 // --------------------------------------------------------------------------
