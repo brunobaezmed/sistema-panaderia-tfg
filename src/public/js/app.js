@@ -210,17 +210,22 @@ async function cargarDashboard() {
     // Expiry table
     const tbodyVto = document.getElementById('tablaLotesPorVencer');
     if (lotesPorVencer.length === 0) {
-      tbodyVto.innerHTML = '<tr><td colspan="5" class="text-center text-success py-3"><i class="fa-solid fa-circle-check me-1"></i> No hay lotes próximos a vencer</td></tr>';
+      tbodyVto.innerHTML = '<tr><td colspan="6" class="text-center text-success py-3"><i class="fa-solid fa-circle-check me-1"></i> No hay lotes próximos a vencer</td></tr>';
     } else {
       tbodyVto.innerHTML = lotesPorVencer.map(l => {
         const urgente = l.dias_restantes <= 5;
         return `
           <tr>
             <td><code>${l.codigo_lote}</code></td>
-            <td class="fw-semibold">${l.nombre}</td>
+            <td class="fw-bold">${l.nombre}</td>
             <td><small class="text-muted">${l.deposito}</small></td>
             <td>${l.fecha_vencimiento}</td>
             <td><span class="badge ${urgente ? 'bg-danger' : 'bg-warning text-dark'}">${l.dias_restantes <= 0 ? '¡VENCIDO!' : l.dias_restantes + ' días'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="abrirModalEditarLote(${l.id})" title="Editar lote o fecha de vencimiento">
+                <i class="fa-solid fa-calendar-pen me-1"></i> Editar
+              </button>
+            </td>
           </tr>
         `;
       }).join('');
@@ -360,7 +365,12 @@ function actualizarNotificacionesDropdown(productosStockBajo = [], lotesPorVence
             <div class="fw-bold small text-dark">${l.nombre}</div>
             <small class="text-muted"><code>${l.codigo_lote}</code> &bull; ${l.deposito} &bull; Vence: <strong>${l.fecha_vencimiento}</strong></small>
           </div>
-          <span class="badge ${badgeCls}">${badgeTxt}</span>
+          <div class="d-flex align-items-center gap-1">
+            <span class="badge ${badgeCls}">${badgeTxt}</span>
+            <button class="btn btn-sm btn-light border py-0 px-1 text-secondary" onclick="abrirModalEditarLote(${l.id})" title="Editar lote y fecha">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
         </div>
       `;
     });
@@ -499,8 +509,8 @@ async function verDetalleProducto(id) {
         <h6 class="fw-bold mt-3 mb-2 border-bottom pb-1"><i class="fa-solid fa-layer-group me-1 text-warning"></i> Lotes Activos y Vencimientos:</h6>
         ${lotes.length === 0 ? '<p class="text-muted small">No hay lotes con existencias activas.</p>' : `
           <div class="table-responsive">
-            <table class="table table-sm small">
-              <thead><tr><th>Lote</th><th>Depósito</th><th>Cantidad</th><th>Vencimiento</th></tr></thead>
+            <table class="table table-sm small align-middle">
+              <thead><tr><th>Lote</th><th>Depósito</th><th>Cantidad</th><th>Vencimiento</th><th class="text-end">Acción</th></tr></thead>
               <tbody>
                 ${lotes.map(l => `
                   <tr>
@@ -508,6 +518,11 @@ async function verDetalleProducto(id) {
                     <td>${l.deposito_nombre}</td>
                     <td class="fw-bold">${l.cantidad_actual}</td>
                     <td>${l.fecha_vencimiento}</td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="Swal.close(); abrirModalEditarLote(${l.id});" title="Editar lote">
+                        <i class="fa-solid fa-calendar-pen me-1"></i> Editar
+                      </button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -2053,17 +2068,59 @@ function setupEventListeners() {
     });
   }
 
-  // Periodic alert refresh every 30 seconds
-  setInterval(async () => {
-    if (API.getToken()) {
+  // 11. Lot Edit Form
+  const formLote = document.getElementById('formEditarLote');
+  if (formLote) {
+    formLote.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loteId = document.getElementById('editLoteId').value;
+      const body = {
+        codigo_lote: document.getElementById('editLoteCodigo').value,
+        cantidad_actual: parseFloat(document.getElementById('editLoteCantidad').value),
+        fecha_elaboracion: document.getElementById('editLoteFechaElab').value || null,
+        fecha_vencimiento: document.getElementById('editLoteFechaVto').value,
+        estado: document.getElementById('editLoteEstado').value
+      };
+
       try {
-        const res = await API.get('/dashboard/stats');
+        const res = await API.put(`/productos/lotes/${loteId}`, body);
         if (res.success) {
-          actualizarNotificacionesDropdown(res.productosStockBajo, res.lotesPorVencer);
+          bootstrap.Modal.getInstance(document.getElementById('modalEditarLote')).hide();
+          Swal.fire('Lote Actualizado', 'La fecha de vencimiento y datos del lote se guardaron correctamente', 'success');
+          
+          // Refresh views and notifications
+          const resStats = await API.get('/dashboard/stats');
+          if (resStats.success) {
+            actualizarNotificacionesDropdown(resStats.productosStockBajo, resStats.lotesPorVencer);
+          }
+          cargarDashboard();
+          cargarProductos();
         }
-      } catch (e) {
-        // silent fail on background poll
+      } catch (err) {
+        Swal.fire('Error', err.message, 'error');
       }
-    }
-  }, 30000);
+    });
+  }
+}
+
+async function abrirModalEditarLote(loteId) {
+  try {
+    const res = await API.get(`/productos/lotes/${loteId}`);
+    if (!res.success) return;
+    const l = res.lote;
+
+    document.getElementById('editLoteId').value = l.id;
+    document.getElementById('editLoteProducto').value = `${l.producto_nombre} (${l.producto_codigo})`;
+    document.getElementById('editLoteDeposito').value = l.deposito_nombre;
+    document.getElementById('editLoteCodigo').value = l.codigo_lote;
+    document.getElementById('editLoteCantidad').value = l.cantidad_actual;
+    document.getElementById('editLoteFechaElab').value = l.fecha_elaboracion || '';
+    document.getElementById('editLoteFechaVto').value = l.fecha_vencimiento;
+    document.getElementById('editLoteEstado').value = l.estado || 'activo';
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEditarLote'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar la información del lote', 'error');
+  }
 }

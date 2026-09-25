@@ -240,6 +240,75 @@ router.put('/:id', verifyToken, checkRole(['admin', 'deposito', 'produccion']), 
   }
 });
 
+// GET /api/productos/lotes/:id
+router.get('/lotes/:id', verifyToken, async (req, res, next) => {
+  try {
+    const lote = await get(`
+      SELECT l.*,
+             p.nombre as producto_nombre,
+             p.codigo as producto_codigo,
+             p.tipo as producto_tipo,
+             d.nombre as deposito_nombre,
+             u.simbolo as unidad_simbolo,
+             CAST(JULIANDAY(l.fecha_vencimiento) - JULIANDAY('now', 'localtime') AS INT) as dias_restantes
+      FROM lotes l
+      JOIN productos p ON l.producto_id = p.id
+      JOIN depositos d ON l.deposito_id = d.id
+      LEFT JOIN unidades_medida u ON p.unidad_id = u.id
+      WHERE l.id = ?
+    `, [req.params.id]);
+
+    if (!lote) {
+      return res.status(404).json({ success: false, message: 'Lote no encontrado' });
+    }
+
+    res.json({ success: true, lote });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/productos/lotes/:id (Edit lot expiration date, code, and status)
+router.put('/lotes/:id', verifyToken, checkRole(['admin', 'deposito', 'produccion']), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { codigo_lote, fecha_vencimiento, fecha_elaboracion, cantidad_actual, estado } = req.body;
+
+    const loteActual = await get('SELECT * FROM lotes WHERE id = ?', [id]);
+    if (!loteActual) {
+      return res.status(404).json({ success: false, message: 'Lote no encontrado' });
+    }
+
+    await run(`
+      UPDATE lotes SET
+        codigo_lote = COALESCE(?, codigo_lote),
+        fecha_vencimiento = COALESCE(?, fecha_vencimiento),
+        fecha_elaboracion = COALESCE(?, fecha_elaboracion),
+        cantidad_actual = COALESCE(?, cantidad_actual),
+        estado = COALESCE(?, estado)
+      WHERE id = ?
+    `, [
+      codigo_lote || loteActual.codigo_lote,
+      fecha_vencimiento || loteActual.fecha_vencimiento,
+      fecha_elaboracion || loteActual.fecha_elaboracion,
+      cantidad_actual !== undefined ? Number(cantidad_actual) : loteActual.cantidad_actual,
+      estado || loteActual.estado,
+      id
+    ]);
+
+    await run('INSERT INTO auditoria_logs (usuario_id, accion, tabla_afectada, registro_id, detalles) VALUES (?, ?, ?, ?, ?)',
+      [req.usuario.id, 'ACTUALIZAR_LOTE', 'lotes', id, `Lote modificado: ${codigo_lote || loteActual.codigo_lote} (Nueva fecha vto: ${fecha_vencimiento})`]
+    );
+
+    res.json({
+      success: true,
+      message: 'Lote y fecha de vencimiento actualizados exitosamente'
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/productos/:id
 router.delete('/:id', verifyToken, checkRole(['admin']), async (req, res, next) => {
   try {

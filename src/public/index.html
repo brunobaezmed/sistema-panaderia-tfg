@@ -319,6 +319,7 @@
                         <th>Depósito</th>
                         <th>Vencimiento</th>
                         <th>Días</th>
+                        <th class="text-end">Acción</th>
                       </tr>
                     </thead>
                     <tbody id="tablaLotesPorVencer">
@@ -1339,6 +1340,63 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Crear Usuario</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Lote & Fecha de Vencimiento -->
+  <div class="modal fade" id="modalEditarLote" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-calendar-pen text-warning me-2"></i>Editar Lote y Fecha de Vencimiento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formEditarLote">
+          <input type="hidden" id="editLoteId">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Producto / Insumo</label>
+              <input type="text" id="editLoteProducto" class="form-control bg-light" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Depósito de Almacenamiento</label>
+              <input type="text" id="editLoteDeposito" class="form-control bg-light" readonly>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Código del Lote</label>
+                <input type="text" id="editLoteCodigo" class="form-control" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Cantidad Actual en Stock</label>
+                <input type="number" id="editLoteCantidad" class="form-control" step="0.1" required>
+              </div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Fecha de Elaboración</label>
+                <input type="date" id="editLoteFechaElab" class="form-control">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold text-danger">Fecha de Vencimiento *</label>
+                <input type="date" id="editLoteFechaVto" class="form-control border-danger" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Estado del Lote</label>
+              <select id="editLoteEstado" class="form-select">
+                <option value="activo">Activo (Disponible)</option>
+                <option value="vencido">Vencido / Caducado</option>
+                <option value="agotado">Agotado</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Guardar Cambios</button>
           </div>
         </form>
       </div>
