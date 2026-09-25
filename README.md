@@ -117,10 +117,6 @@ Visitar: **`http://localhost:3000`**
 | **Producción / Panadero** | `produccion@panaderia.com` | `panadero123` |
 
 ---
-
-   git push -u origin main
-   ```
-
 ---
 
 *Proyecto desarrollado como Trabajo Final de Grado para la obtención del título de Ingeniero en Informática — UNIGRAN.*
