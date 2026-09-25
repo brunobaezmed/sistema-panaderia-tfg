@@ -118,19 +118,6 @@ Visitar: **`http://localhost:3000`**
 
 ---
 
-## 🌐 Publicar en GitHub
-
-Para subir este proyecto a tu cuenta de GitHub (`brunobaezmed`):
-
-1. **Crear el repositorio en GitHub**:
-   - Ingresa a [github.com/new](https://github.com/new)
-   - Nombre del repositorio: `sistema-panaderia-tfg` (público o privado).
-   - No marques "Initialize with README" (ya lo tenemos creado).
-
-2. **Ejecutar en la terminal de la carpeta del proyecto**:
-   ```bash
-   git remote add origin https://github.com/brunobaezmed/sistema-panaderia-tfg.git
-   git branch -M main
    git push -u origin main
    ```
 
