@@ -169,15 +169,8 @@ async function cargarDashboard() {
     document.getElementById('kpiStockBajo').textContent = stats.alertaStockBajoCount;
     document.getElementById('kpiVencimientos').textContent = stats.alertaVencimientoCount;
 
-    // Badges in header
-    const totalAlertas = stats.alertaStockBajoCount + stats.alertaVencimientoCount;
-    const badgeAlertas = document.getElementById('badgeAlertasTotal');
-    if (totalAlertas > 0) {
-      badgeAlertas.textContent = totalAlertas;
-      badgeAlertas.classList.remove('d-none');
-    } else {
-      badgeAlertas.classList.add('d-none');
-    }
+    // Update notifications in header and dropdown
+    actualizarNotificacionesDropdown(productosStockBajo, lotesPorVencer);
 
     // Top products list
     const listTop = document.getElementById('listTopVendidos');
@@ -288,6 +281,92 @@ function renderVentasChart(data) {
       }
     }
   });
+}
+
+function actualizarNotificacionesDropdown(productosStockBajo = [], lotesPorVencer = []) {
+  const container = document.getElementById('alertasDropdownLista');
+  const badgeTotal = document.getElementById('badgeAlertasTotal');
+  const badgeContador = document.getElementById('badgeDropdownContador');
+  const total = (productosStockBajo ? productosStockBajo.length : 0) + (lotesPorVencer ? lotesPorVencer.length : 0);
+
+  if (badgeTotal) {
+    if (total > 0) {
+      badgeTotal.textContent = total;
+      badgeTotal.classList.remove('d-none');
+    } else {
+      badgeTotal.classList.add('d-none');
+    }
+  }
+
+  if (badgeContador) {
+    badgeContador.textContent = total;
+    badgeContador.className = `badge rounded-pill ${total > 0 ? 'bg-danger' : 'bg-success'}`;
+  }
+
+  if (!container) return;
+
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="p-4 text-center text-muted small">
+        <i class="fa-solid fa-circle-check fa-2x text-success mb-2"></i>
+        <p class="mb-0 fw-semibold text-dark">Todo en orden</p>
+        <small class="text-muted">No hay alertas de stock bajo ni vencimientos próximos.</small>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+
+  // 1. Stock Bajo
+  if (productosStockBajo && productosStockBajo.length > 0) {
+    html += `
+      <div class="px-3 py-2 bg-danger bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
+        <small class="fw-bold text-danger text-uppercase" style="font-size: 0.75rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i> Stock Crítico (${productosStockBajo.length})</small>
+        <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none small" style="font-size: 0.75rem;" onclick="navigate('compras')">Comprar Insumos &rarr;</button>
+      </div>
+    `;
+    productosStockBajo.forEach(p => {
+      html += `
+        <div class="p-2 px-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+          <div>
+            <div class="fw-bold small text-dark">${p.nombre}</div>
+            <small class="text-muted">${p.categoria || 'Insumo'} &bull; Actual: <strong class="text-danger">${p.stock_actual} ${p.unidad || ''}</strong> / Mín: ${p.stock_minimo} ${p.unidad || ''}</small>
+          </div>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Bajo</span>
+        </div>
+      `;
+    });
+  }
+
+  // 2. Vencimientos
+  if (lotesPorVencer && lotesPorVencer.length > 0) {
+    html += `
+      <div class="px-3 py-2 bg-warning bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
+        <small class="fw-bold text-warning-emphasis text-uppercase" style="font-size: 0.75rem;"><i class="fa-solid fa-calendar-xmark me-1"></i> Próximos a Vencer (${lotesPorVencer.length})</small>
+        <button class="btn btn-sm btn-link text-warning-emphasis p-0 text-decoration-none small" style="font-size: 0.75rem;" onclick="navigate('produccion')">Usar / Hornear &rarr;</button>
+      </div>
+    `;
+    lotesPorVencer.forEach(l => {
+      const dias = l.dias_restantes;
+      const esVencido = dias <= 0;
+      const esUrgente = dias <= 3;
+      const badgeCls = esVencido ? 'bg-danger text-white' : (esUrgente ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-warning-subtle text-dark border border-warning-subtle');
+      const badgeTxt = esVencido ? '¡Vencido!' : `${dias} días`;
+
+      html += `
+        <div class="p-2 px-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+          <div>
+            <div class="fw-bold small text-dark">${l.nombre}</div>
+            <small class="text-muted"><code>${l.codigo_lote}</code> &bull; ${l.deposito} &bull; Vence: <strong>${l.fecha_vencimiento}</strong></small>
+          </div>
+          <span class="badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+      `;
+    });
+  }
+
+  container.innerHTML = html;
 }
 
 // --------------------------------------------------------------------------
@@ -1958,4 +2037,33 @@ function setupEventListeners() {
   document.getElementById('filtroBuscarProducto').addEventListener('input', cargarProductos);
   document.getElementById('filtroTipoProducto').addEventListener('change', cargarProductos);
   document.getElementById('posSearchProduct').addEventListener('input', () => posFilterCategory(''));
+
+  // Notification button click handler
+  const btnAlertas = document.getElementById('btnDropdownAlertas');
+  if (btnAlertas) {
+    btnAlertas.addEventListener('click', async () => {
+      try {
+        const res = await API.get('/dashboard/stats');
+        if (res.success) {
+          actualizarNotificacionesDropdown(res.productosStockBajo, res.lotesPorVencer);
+        }
+      } catch (e) {
+        console.warn('Error refrescando alertas:', e);
+      }
+    });
+  }
+
+  // Periodic alert refresh every 30 seconds
+  setInterval(async () => {
+    if (API.getToken()) {
+      try {
+        const res = await API.get('/dashboard/stats');
+        if (res.success) {
+          actualizarNotificacionesDropdown(res.productosStockBajo, res.lotesPorVencer);
+        }
+      } catch (e) {
+        // silent fail on background poll
+      }
+    }
+  }, 30000);
 }
