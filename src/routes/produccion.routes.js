@@ -18,6 +18,7 @@ router.get('/', verifyToken, async (req, res, next) => {
       FROM producciones p
       JOIN recetas r ON p.receta_id = r.id
       JOIN productos prod ON p.producto_terminado_id = prod.id
+      LEFT JOIN unidades_medida u ON prod.unidad_id = u.id
       JOIN depositos d_orig ON p.deposito_origen_id = d_orig.id
       JOIN depositos d_dest ON p.deposito_destino_id = d_dest.id
       JOIN usuarios usr ON p.usuario_id = usr.id
@@ -48,6 +49,7 @@ router.get('/:id', verifyToken, async (req, res, next) => {
       FROM producciones p
       JOIN recetas r ON p.receta_id = r.id
       JOIN productos prod ON p.producto_terminado_id = prod.id
+      LEFT JOIN unidades_medida u ON prod.unidad_id = u.id
       JOIN depositos d_orig ON p.deposito_origen_id = d_orig.id
       JOIN depositos d_dest ON p.deposito_destino_id = d_dest.id
       JOIN usuarios usr ON p.usuario_id = usr.id
