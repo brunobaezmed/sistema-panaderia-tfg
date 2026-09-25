@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión de Inventario - Panadería Capiatá | TFG</title>
+  
+  <!-- Bootstrap 5 CSS & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+</head>
+<body>
+
+  <!-- LOGIN CONTAINER (shown if not logged in) -->
+  <div id="loginSection" class="d-none">
+    <div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+      <div class="card border-0 shadow-lg" style="max-width: 440px; width: 100%; border-radius: 1rem;">
+        <div class="card-body p-4 p-md-5">
+          <div class="text-center mb-4">
+            <div class="bg-warning-subtle text-warning d-inline-flex p-3 rounded-circle mb-3">
+              <i class="fa-solid fa-bread-slice fa-3x text-amber-600" style="color: #d97706;"></i>
+            </div>
+            <h3 class="fw-bold text-dark mb-1">Panadería & Confitería</h3>
+            <p class="text-muted small">Sistema de Gestión de Inventario y Control Operativo<br><strong>UNIGRAN - Capiatá, Paraguay</strong></p>
+          </div>
+
+          <form id="formLogin">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Correo Electrónico</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="fa-solid fa-envelope text-muted"></i></span>
+                <input type="email" id="loginEmail" class="form-control" value="admin@panaderia.com" required placeholder="admin@panaderia.com">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-semibold">Contraseña</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="fa-solid fa-lock text-muted"></i></span>
+                <input type="password" id="loginPassword" class="form-control" value="admin123" required placeholder="******">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-warning w-100 py-2 fw-semibold text-white shadow-sm" style="background-color: #d97706; border-color: #d97706;">
+              <i class="fa-solid fa-arrow-right-to-bracket me-2"></i> Iniciar Sesión
+            </button>
+          </form>
+
+          <div class="mt-4 pt-3 border-top text-center">
+            <small class="text-muted d-block"><strong>Cuentas de demostración disponibles:</strong></small>
+            <div class="d-flex flex-wrap justify-content-center gap-1 mt-2">
+              <button class="btn btn-sm btn-outline-secondary py-0" onclick="setDemoUser('admin@panaderia.com', 'admin123')">Admin</button>
+              <button class="btn btn-sm btn-outline-secondary py-0" onclick="setDemoUser('deposito@panaderia.com', 'deposito123')">Depósito</button>
+              <button class="btn btn-sm btn-outline-secondary py-0" onclick="setDemoUser('cajero@panaderia.com', 'cajero123')">Ventas</button>
+              <button class="btn btn-sm btn-outline-secondary py-0" onclick="setDemoUser('produccion@panaderia.com', 'panadero123')">Producción</button>
+            </div>
+            <div class="mt-3 text-muted" style="font-size: 0.75rem;">
+              Alumno: Bruno Matias Báez Medina | Tutora: Dra. Francisca Castillo
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP WRAPPER (shown when logged in) -->
+  <div id="appSection" class="d-flex d-none">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar d-flex flex-column flex-shrink-0">
+      <div class="brand-header d-flex align-items-center gap-3">
+        <i class="fa-solid fa-bread-slice fa-2x text-warning"></i>
+        <div>
+          <h6 class="mb-0 fw-bold text-white">PANADERÍA CAPIATÁ</h6>
+          <small class="text-warning-emphasis" style="font-size: 0.7rem;">SISTEMA DE GESTIÓN TFG</small>
+        </div>
+      </div>
+
+      <div class="flex-grow-1 overflow-y-auto py-3">
+        <div class="nav-section-title">Principal</div>
+        <a class="nav-link active" data-view="dashboard" onclick="navigate('dashboard')">
+          <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section-title">Inventario & Catálogo</div>
+        <a class="nav-link" data-view="productos" onclick="navigate('productos')">
+          <i class="fa-solid fa-boxes-stacked"></i> <span>Insumos y Productos</span>
+        </a>
+        <a class="nav-link" data-view="recetas" onclick="navigate('recetas')">
+          <i class="fa-solid fa-kitchen-set"></i> <span>Recetario & Fórmulas</span>
+        </a>
+        <a class="nav-link" data-view="produccion" onclick="navigate('produccion')">
+          <i class="fa-solid fa-fire-burner"></i> <span>Producción / Horneadas</span>
+        </a>
+
+        <div class="nav-section-title">Operaciones Comerciales</div>
+        <a class="nav-link" data-view="pos" onclick="navigate('pos')">
+          <i class="fa-solid fa-cash-register"></i> <span>Punto de Venta (POS)</span>
+        </a>
+        <a class="nav-link" data-view="ventas-historial" onclick="navigate('ventas-historial')">
+          <i class="fa-solid fa-receipt"></i> <span>Historial de Ventas</span>
+        </a>
+        <a class="nav-link" data-view="compras" onclick="navigate('compras')">
+          <i class="fa-solid fa-truck-ramp-box"></i> <span>Compras a Proveedores</span>
+        </a>
+
+        <div class="nav-section-title">Almacenamiento & Control</div>
+        <a class="nav-link" data-view="depositos" onclick="navigate('depositos')">
+          <i class="fa-solid fa-warehouse"></i> <span>Depósitos & Transferencias</span>
+        </a>
+        <a class="nav-link" data-view="ajustes" onclick="navigate('ajustes')">
+          <i class="fa-solid fa-scale-balanced"></i> <span>Ajustes de Inventario</span>
+        </a>
+        <a class="nav-link" data-view="kardex" onclick="navigate('kardex')">
+          <i class="fa-solid fa-book-journal-whills"></i> <span>Libro Kardex / Auditoría</span>
+        </a>
+
+        <div class="nav-section-title">Reportes & Sistema</div>
+        <a class="nav-link" data-view="reportes" onclick="navigate('reportes')">
+          <i class="fa-solid fa-chart-line"></i> <span>Reportes & Estadísticas</span>
+        </a>
+        <a class="nav-link" data-view="usuarios" id="navUsuarios" onclick="navigate('usuarios')">
+          <i class="fa-solid fa-users-gear"></i> <span>Usuarios & Accesos</span>
+        </a>
+      </div>
+
+      <div class="p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-20">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2 overflow-hidden">
+            <div class="bg-warning text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+              <span id="userAvatar">A</span>
+            </div>
+            <div class="text-truncate">
+              <div id="userNombre" class="text-white small fw-bold text-truncate">Bruno Báez</div>
+              <div id="userRol" class="text-secondary" style="font-size: 0.7rem;">Administrador</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-danger border-0" onclick="API.logout()" title="Cerrar Sesión">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- TOP NAVBAR -->
+      <header class="top-navbar d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+          <h5 id="pageTitle" class="mb-0 fw-bold text-dark">Panel de Control (Dashboard)</h5>
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 rounded-pill small">
+            <i class="fa-solid fa-location-dot me-1"></i> Panadería Capiatá - Central
+          </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <div class="text-muted small d-none d-md-block">
+            <i class="fa-regular fa-clock me-1"></i> <span id="liveClock">--:--:--</span>
+          </div>
+
+          <div class="dropdown">
+            <button class="btn btn-light position-relative border" data-bs-toggle="dropdown">
+              <i class="fa-regular fa-bell text-secondary"></i>
+              <span id="badgeAlertasTotal" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="width: 320px;" id="dropdownNotificaciones">
+              <li class="dropdown-header fw-bold">Alertas del Sistema</li>
+              <li><hr class="dropdown-divider"></li>
+              <li id="alertasDropdownContenido" class="px-3 py-2 text-muted small text-center">No hay alertas críticas</li>
+            </ul>
+          </div>
+
+          <button class="btn btn-warning text-white fw-semibold btn-sm shadow-sm" onclick="navigate('pos')" style="background-color: #d97706; border-color: #d97706;">
+            <i class="fa-solid fa-cart-shopping me-1"></i> Abrir POS
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW PANELS -->
+      <div class="p-3 p-md-4 flex-grow-1">
+
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="view-dashboard" class="app-view">
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="kpi-title">Valor del Inventario</div>
+                  <div class="kpi-value" id="kpiValorInventario">0 ₲</div>
+                  <small class="text-muted">Costo total de existencias</small>
+                </div>
+                <div class="kpi-icon bg-success-subtle text-success">
+                  <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="kpi-title">Ventas de Hoy</div>
+                  <div class="kpi-value text-primary" id="kpiVentasHoy">0 ₲</div>
+                  <small class="text-muted"><span id="kpiTransaccionesHoy">0</span> comprobantes emitidos</small>
+                </div>
+                <div class="kpi-icon bg-primary-subtle text-primary">
+                  <i class="fa-solid fa-cash-register"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="kpi-title">Alertas Stock Crítico</div>
+                  <div class="kpi-value text-danger" id="kpiStockBajo">0</div>
+                  <small class="text-danger fw-semibold">Requiere reposición urgente</small>
+                </div>
+                <div class="kpi-icon bg-danger-subtle text-danger">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="kpi-title">Lotes por Vencer</div>
+                  <div class="kpi-value text-warning" id="kpiVencimientos">0</div>
+                  <small class="text-warning-emphasis fw-semibold">&le; 15 días de caducidad</small>
+                </div>
+                <div class="kpi-icon bg-warning-subtle text-warning">
+                  <i class="fa-solid fa-calendar-xmark"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts and Alerts Row -->
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-lg-8">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
+                  <h6 class="mb-0 fw-bold"><i class="fa-solid fa-chart-line text-warning me-2"></i>Evolución de Ventas (Últimos 7 días)</h6>
+                  <span class="badge bg-light text-dark border">En Guaraníes (₲)</span>
+                </div>
+                <div class="card-body">
+                  <canvas id="chartVentas7Dias" height="110"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                  <h6 class="mb-0 fw-bold"><i class="fa-solid fa-fire text-danger me-2"></i>Top Panificados Más Vendidos</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div class="list-group list-group-flush" id="listTopVendidos">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tables Row: Critical Alerts & Latest Movements -->
+          <div class="row g-3">
+            <div class="col-12 col-lg-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0 fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Productos con Bajo Stock</h6>
+                  <button class="btn btn-sm btn-outline-primary py-0" onclick="navigate('compras')">Comprar Insumos</button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Código</th>
+                        <th>Producto / Insumo</th>
+                        <th>Categoría</th>
+                        <th>Stock Actual</th>
+                        <th>Mínimo</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaStockBajo">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0 fw-bold text-warning"><i class="fa-solid fa-clock-rotate-left me-2"></i>Lotes Próximos a Vencer</h6>
+                  <button class="btn btn-sm btn-outline-warning py-0" onclick="navigate('produccion')">Elaborar / Usar</button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Lote</th>
+                        <th>Insumo / Producto</th>
+                        <th>Depósito</th>
+                        <th>Vencimiento</th>
+                        <th>Días</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaLotesPorVencer">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. PRODUCTOS E INSUMOS VIEW -->
+        <section id="view-productos" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-4">
+                  <h5 class="mb-0 fw-bold">Catálogo de Insumos y Productos</h5>
+                </div>
+                <div class="col-12 col-md-8 d-flex flex-wrap justify-content-md-end gap-2">
+                  <div class="input-group input-group-sm" style="max-width: 250px;">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="filtroBuscarProducto" class="form-control" placeholder="Buscar por nombre o código...">
+                  </div>
+                  <select id="filtroTipoProducto" class="form-select form-select-sm" style="max-width: 180px;">
+                    <option value="">Todos los Tipos</option>
+                    <option value="materia_prima">Materias Primas (Insumos)</option>
+                    <option value="producto_terminado">Productos Terminados (Panificados)</option>
+                  </select>
+                  <button class="btn btn-warning btn-sm text-white fw-semibold" onclick="abrirModalProducto()" style="background-color: #d97706; border-color: #d97706;">
+                    <i class="fa-solid fa-plus me-1"></i> Nuevo Producto/Insumo
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                  <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Categoría</th>
+                    <th>Stock Global</th>
+                    <th>Costo Unitario</th>
+                    <th>Precio Venta</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaProductos">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. RECETARIO VIEW -->
+        <section id="view-recetas" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0 fw-bold">Fórmulas y Recetas de Panadería</h5>
+                <small class="text-muted">Estandarización de proporciones, consumo de materias primas y costeo</small>
+              </div>
+              <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalReceta()" style="background-color: #d97706; border-color: #d97706;">
+                <i class="fa-solid fa-plus me-1"></i> Nueva Fórmula/Receta
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <div class="row g-3 p-3" id="contenedorRecetasCards">
+                <!-- Populated dynamically with rich recipe cards -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. PRODUCCIÓN VIEW -->
+        <section id="view-produccion" class="app-view d-none">
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                  <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-fire-burner text-warning me-2"></i>Nueva Orden de Horneada / Elaboración</h6>
+                  <small class="text-muted">Descuenta insumos y da entrada al producto elaborado automáticamente</small>
+                </div>
+                <div class="card-body">
+                  <form id="formProduccion">
+                    <div class="mb-3">
+                      <label class="form-label small fw-semibold">Seleccionar Receta / Fórmula</label>
+                      <select id="prodRecetaId" class="form-select" required onchange="cargarDetalleInsumosProduccion()">
+                        <option value="">-- Seleccionar Receta --</option>
+                      </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                      <div class="col-6">
+                        <label class="form-label small fw-semibold">Depósito de Insumos (Origen)</label>
+                        <select id="prodDepositoOrigen" class="form-select form-select-sm" required onchange="cargarDetalleInsumosProduccion()">
+                          <!-- Options populated -->
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-semibold">Depósito Destino (Entrada)</label>
+                        <select id="prodDepositoDestino" class="form-select form-select-sm" required>
+                          <!-- Options populated -->
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                      <div class="col-6">
+                        <label class="form-label small fw-semibold">Multiplicador de Tandas</label>
+                        <input type="number" id="prodMultiplicador" class="form-control" value="1" min="0.5" step="0.5" required onchange="cargarDetalleInsumosProduccion()">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-semibold">Cantidad Final Obtenida</label>
+                        <input type="number" id="prodCantidadObtenida" class="form-control" required min="1" step="0.1" placeholder="Ej: 10">
+                      </div>
+                    </div>
+
+                    <!-- Insumos requeridos preview table -->
+                    <div class="mb-3">
+                      <label class="form-label small fw-semibold">Insumos Requeridos vs Stock Disponible:</label>
+                      <div class="table-responsive border rounded" style="max-height: 200px;">
+                        <table class="table table-sm table-striped mb-0 small">
+                          <thead>
+                            <tr>
+                              <th>Insumo</th>
+                              <th>Requerido</th>
+                              <th>En Depósito</th>
+                              <th>Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody id="tablaPreviewInsumosProduccion">
+                            <tr><td colspan="4" class="text-center text-muted">Seleccione una receta</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label small fw-semibold">Días de Vencimiento del Lote Horneado</label>
+                      <input type="number" id="prodDiasVto" class="form-control form-control-sm" value="3" min="1">
+                    </div>
+
+                    <button type="submit" id="btnEjecutarProduccion" class="btn btn-warning w-100 py-2 fw-semibold text-white shadow-sm" style="background-color: #d97706; border-color: #d97706;">
+                      <i class="fa-solid fa-circle-check me-2"></i> ¡Hornear y Registrar en Inventario!
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                  <h6 class="mb-0 fw-bold"><i class="fa-solid fa-list-check me-2 text-primary"></i>Historial de Producción / Horneadas</h6>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Código</th>
+                        <th>Fecha</th>
+                        <th>Fórmula</th>
+                        <th>Producto Obtenido</th>
+                        <th>Costo Total</th>
+                        <th>Responsable</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaHistorialProduccion">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. POS / PUNTO DE VENTA VIEW -->
+        <section id="view-pos" class="app-view d-none">
+          <div class="row g-3">
+            <!-- Product Grid -->
+            <div class="col-12 col-lg-8">
+              <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-3">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-12 col-md-6">
+                      <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="posSearchProduct" class="form-control" placeholder="Buscar panificado por nombre o código...">
+                      </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <div class="d-flex gap-1 overflow-x-auto" id="posCategoryFilters">
+                        <!-- Category pills dynamically rendered -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Product items container -->
+              <div class="row g-3" id="posProductsContainer" style="max-height: calc(100vh - 240px); overflow-y: auto;">
+                <!-- Dynamically populated with fast POS product cards -->
+              </div>
+            </div>
+
+            <!-- POS Cart & Checkout Panel -->
+            <div class="col-12 col-lg-4">
+              <div class="pos-cart-panel p-3">
+                <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
+                  <h6 class="mb-0 fw-bold"><i class="fa-solid fa-cart-shopping text-warning me-2"></i>Orden de Venta</h6>
+                  <button class="btn btn-sm btn-outline-danger border-0 py-0" onclick="posClearCart()" title="Vaciar Carrito">
+                    <i class="fa-solid fa-trash-can me-1"></i> Vaciar
+                  </button>
+                </div>
+
+                <!-- Client Selector -->
+                <div class="mb-2">
+                  <div class="d-flex gap-1">
+                    <select id="posClientSelect" class="form-select form-select-sm">
+                      <!-- Populated with clients -->
+                    </select>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalNuevoCliente()" title="Nuevo Cliente">
+                      <i class="fa-solid fa-user-plus"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Cart Items List -->
+                <div class="pos-cart-items border rounded p-2 mb-2" id="posCartItemsList">
+                  <div class="text-center text-muted py-5">
+                    <i class="fa-solid fa-basket-shopping fa-3x mb-2 text-secondary opacity-50"></i>
+                    <p class="small mb-0">El carrito está vacío.<br>Haga clic en un producto para agregarlo.</p>
+                  </div>
+                </div>
+
+                <!-- Cart Totals & Checkout -->
+                <div class="pt-2 border-top">
+                  <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Subtotal:</span>
+                    <span id="posSubtotalTxt">0 ₲</span>
+                  </div>
+                  <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Liquidación IVA (10% inc.):</span>
+                    <span id="posIva10Txt">0 ₲</span>
+                  </div>
+                  <div class="d-flex justify-content-between fw-bold fs-5 text-dark mb-2">
+                    <span>TOTAL A PAGAR:</span>
+                    <span class="text-success" id="posTotalTxt">0 ₲</span>
+                  </div>
+
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <select id="posPaymentMethod" class="form-select form-select-sm">
+                        <option value="efectivo">Efectivo ₲</option>
+                        <option value="tarjeta">Tarjeta Débito/Crédito</option>
+                        <option value="transferencia_qr">Transferencia / QR</option>
+                      </select>
+                    </div>
+                    <div class="col-6">
+                      <select id="posReceiptType" class="form-select form-select-sm">
+                        <option value="ticket">Ticket Mostrador</option>
+                        <option value="factura">Factura Legal</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">Efectivo Recibido:</span>
+                      <input type="number" id="posMontoRecibido" class="form-control" placeholder="0" oninput="posCalcularVuelto()">
+                    </div>
+                    <div class="d-flex justify-content-between small mt-1 fw-bold">
+                      <span class="text-muted">Vuelto a entregar:</span>
+                      <span class="text-primary" id="posVueltoTxt">0 ₲</span>
+                    </div>
+                  </div>
+
+                  <button class="btn btn-success w-100 py-2 fw-bold shadow-sm" onclick="posConfirmSale()">
+                    <i class="fa-solid fa-print me-2"></i> Cobrar e Imprimir Ticket
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. HISTORIAL VENTAS VIEW -->
+        <section id="view-ventas-historial" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0 fw-bold">Registro de Ventas y Facturación</h5>
+              <div class="d-flex gap-2">
+                <input type="date" id="filtroVentaDesde" class="form-control form-control-sm" onchange="cargarHistorialVentas()">
+                <input type="date" id="filtroVentaHasta" class="form-control form-control-sm" onchange="cargarHistorialVentas()">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nº Comprobante</th>
+                    <th>Tipo</th>
+                    <th>Fecha / Hora</th>
+                    <th>Cliente</th>
+                    <th>Método</th>
+                    <th>Total (₲)</th>
+                    <th>Cajero</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaVentasHistorial">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. COMPRAS VIEW -->
+        <section id="view-compras" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0 fw-bold">Gestión de Compras y Abastecimiento</h5>
+                <small class="text-muted">Entrada de materias primas con control de lotes y vencimientos</small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" onclick="abrirModalNuevoProveedor()">
+                  <i class="fa-solid fa-building-user me-1"></i> Nuevo Proveedor
+                </button>
+                <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalNuevaCompra()" style="background-color: #d97706; border-color: #d97706;">
+                  <i class="fa-solid fa-cart-flatbed me-1"></i> Registrar Factura de Compra
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nº Factura</th>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>RUC</th>
+                    <th>Depósito Ingreso</th>
+                    <th>Total Factura</th>
+                    <th>Condición</th>
+                    <th class="text-end">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaCompras">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. DEPÓSITOS Y TRANSFERENCIAS VIEW -->
+        <section id="view-depositos" class="app-view d-none">
+          <div class="row g-3 mb-4" id="cardsDepositosContainer">
+            <!-- Deposit overview cards -->
+          </div>
+
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0 fw-bold">Transferencias Internas de Stock</h5>
+              <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalTransferencia()" style="background-color: #d97706; border-color: #d97706;">
+                <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> Nueva Transferencia
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Código</th>
+                    <th>Fecha</th>
+                    <th>Depósito Origen</th>
+                    <th>Depósito Destino</th>
+                    <th>Motivo</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaTransferencias">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. AJUSTES DE INVENTARIO VIEW -->
+        <section id="view-ajustes" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0 fw-bold">Ajustes de Inventario y Auditoría Física</h5>
+                <small class="text-muted">Registro de mermas, caducidades, roturas y conciliación de recuentos</small>
+              </div>
+              <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalAjuste()" style="background-color: #d97706; border-color: #d97706;">
+                <i class="fa-solid fa-sliders me-1"></i> Registrar Ajuste de Stock
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Código</th>
+                    <th>Fecha</th>
+                    <th>Depósito</th>
+                    <th>Tipo Ajuste</th>
+                    <th>Motivo</th>
+                    <th>Observaciones</th>
+                    <th>Usuario</th>
+                    <th class="text-end">Detalles</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaAjustes">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. KARDEX VIEW -->
+        <section id="view-kardex" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-3">
+                  <h5 class="mb-0 fw-bold">Libro Kardex de Movimientos</h5>
+                </div>
+                <div class="col-12 col-md-9 d-flex flex-wrap justify-content-md-end gap-2">
+                  <select id="filtroKardexProducto" class="form-select form-select-sm" style="max-width: 200px;" onchange="cargarKardex()">
+                    <option value="">Todos los Productos</option>
+                  </select>
+                  <select id="filtroKardexDeposito" class="form-select form-select-sm" style="max-width: 170px;" onchange="cargarKardex()">
+                    <option value="">Todos los Depósitos</option>
+                  </select>
+                  <select id="filtroKardexTipo" class="form-select form-select-sm" style="max-width: 170px;" onchange="cargarKardex()">
+                    <option value="">Todos los Movimientos</option>
+                    <option value="COMPRA">COMPRA</option>
+                    <option value="VENTA">VENTA</option>
+                    <option value="PRODUCCION_CONSUMO">PRODUCCIÓN CONSUMO</option>
+                    <option value="PRODUCCION_ENTRADA">PRODUCCIÓN ENTRADA</option>
+                    <option value="TRANSFERENCIA_ENTRADA">TRANSFERENCIA</option>
+                    <option value="AJUSTE_POSITIVO">AJUSTES</option>
+                  </select>
+                  <button class="btn btn-outline-success btn-sm" onclick="exportarKardexCSV()">
+                    <i class="fa-solid fa-file-excel me-1"></i> Exportar CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small" id="tablaKardexExport">
+                <thead class="table-light">
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Producto / Insumo</th>
+                    <th>Depósito</th>
+                    <th>Tipo Movimiento</th>
+                    <th>Documento / Ref</th>
+                    <th class="text-success text-center">Entrada (+)</th>
+                    <th class="text-danger text-center">Salida (-)</th>
+                    <th class="text-primary text-center fw-bold">Saldo</th>
+                    <th>Costo Unit.</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaKardex">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11. REPORTES VIEW -->
+        <section id="view-reportes" class="app-view d-none">
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3">
+                <i class="fa-solid fa-boxes-packing fa-2x text-primary mb-2"></i>
+                <h6 class="fw-bold mb-1">Inventario Valorizado</h6>
+                <p class="text-muted small mb-2">Costo y estimación de venta total por depósito y categoría</p>
+                <button class="btn btn-outline-primary btn-sm" onclick="cargarReporteInventario()">Ver Informe</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3">
+                <i class="fa-solid fa-chart-pie fa-2x text-success mb-2"></i>
+                <h6 class="fw-bold mb-1">Ventas por Producto & Métodos</h6>
+                <p class="text-muted small mb-2">Total recaudado, productos más rentables y canales de cobro</p>
+                <button class="btn btn-outline-success btn-sm" onclick="cargarReporteVentas()">Ver Informe</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3">
+                <i class="fa-solid fa-triangle-exclamation fa-2x text-danger mb-2"></i>
+                <h6 class="fw-bold mb-1">Mermas y Pérdidas</h6>
+                <p class="text-muted small mb-2">Análisis de desperdicios, roturas y productos caducados</p>
+                <button class="btn btn-outline-danger btn-sm" onclick="cargarReporteMermas()">Ver Informe</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm" id="reporteContenedorResultado">
+            <div class="card-body p-4 text-center text-muted">
+              <i class="fa-solid fa-chart-simple fa-3x mb-3 text-secondary opacity-50"></i>
+              <h5>Seleccione un reporte superior para generar el análisis</h5>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. USUARIOS VIEW -->
+        <section id="view-usuarios" class="app-view d-none">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0 fw-bold">Administración de Usuarios y Permisos</h5>
+              <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalNuevoUsuario()" style="background-color: #d97706; border-color: #d97706;">
+                <i class="fa-solid fa-user-plus me-1"></i> Crear Usuario
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre y Apellido</th>
+                    <th>Correo Electrónico</th>
+                    <th>Rol / Cargo</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaUsuarios">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS CONTAINER -->
+
+  <!-- Modal Producto / Insumo -->
+  <div class="modal fade" id="modalProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="modalProductoTitulo">Nuevo Producto / Insumo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formProducto">
+          <input type="hidden" id="prodId">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Código Interno</label>
+                <input type="text" id="pCodigo" class="form-control" required placeholder="Ej: INS-015">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Código de Barras</label>
+                <input type="text" id="pCodigoBarra" class="form-control" placeholder="784000...">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Tipo de Ítem</label>
+                <select id="pTipo" class="form-select" required>
+                  <option value="materia_prima">Materia Prima (Insumo)</option>
+                  <option value="producto_terminado">Producto Terminado (Panificado)</option>
+                </select>
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold">Nombre del Producto / Insumo</label>
+                <input type="text" id="pNombre" class="form-control" required placeholder="Ej: Harina de Centeno x 25kg">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Categoría</label>
+                <select id="pCategoriaId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Unidad de Medida</label>
+                <select id="pUnidadId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Stock Mínimo (Alerta)</label>
+                <input type="number" id="pStockMinimo" class="form-control" value="10" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Stock Máximo</label>
+                <input type="number" id="pStockMaximo" class="form-control" value="500">
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Precio Costo (₲)</label>
+                <input type="number" id="pPrecioCosto" class="form-control" value="0" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Precio Venta (₲)</label>
+                <input type="number" id="pPrecioVenta" class="form-control" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">IVA Aplicable (%)</label>
+                <select id="pIva" class="form-select">
+                  <option value="10">IVA 10% (General)</option>
+                  <option value="5">IVA 5% (Básico)</option>
+                  <option value="0">Exento</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Descripción / Observaciones</label>
+                <textarea id="pDescripcion" class="form-control" rows="2" placeholder="Detalles adicionales..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Guardar Producto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Receta -->
+  <div class="modal fade" id="modalReceta" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Nueva Fórmula / Receta de Panadería</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formReceta">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Código Fórmula</label>
+                <input type="text" id="recCodigo" class="form-control" required placeholder="REC-004">
+              </div>
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold">Nombre de la Receta</label>
+                <input type="text" id="recNombre" class="form-control" required placeholder="Ej: Baguette Artesanal Crujiente">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Producto Terminado a Elaborar</label>
+                <select id="recProductoTerminadoId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Rendimiento (kg/un)</label>
+                <input type="number" id="recRendimiento" class="form-control" value="10" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Tiempo Estimado (min)</label>
+                <input type="number" id="recTiempo" class="form-control" value="60">
+              </div>
+            </div>
+
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold">Insumos Requeridos por Tanda</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarFilaInsumoReceta()">
+                  <i class="fa-solid fa-plus me-1"></i> Añadir Insumo
+                </button>
+              </div>
+              <div id="contenedorInsumosReceta">
+                <!-- Dynamic ingredient rows -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Guardar Receta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Compra Factura -->
+  <div class="modal fade" id="modalCompra" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Compra / Factura de Proveedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevaCompra">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Proveedor</label>
+                <select id="compraProveedorId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Nº Factura Proveedor</label>
+                <input type="text" id="compraNumeroFactura" class="form-control" required placeholder="001-001-0004523">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Fecha</label>
+                <input type="date" id="compraFecha" class="form-control" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Depósito de Entrada</label>
+                <select id="compraDepositoId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+            </div>
+
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold">Ítems e Insumos de la Compra</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarFilaCompraItem()">
+                  <i class="fa-solid fa-plus me-1"></i> Agregar Ítem
+                </button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 35%;">Insumo / Producto</th>
+                      <th style="width: 15%;">Código Lote</th>
+                      <th style="width: 15%;">Fecha Vto.</th>
+                      <th style="width: 10%;">Cantidad</th>
+                      <th style="width: 15%;">Precio Unit. (₲)</th>
+                      <th style="width: 10%;">Subtotal</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaCompraDetalles">
+                    <!-- Dynamic rows -->
+                  </tbody>
+                </table>
+              </div>
+              <div class="text-end fw-bold fs-5 mt-2">
+                Total Factura: <span class="text-success" id="compraTotalTxt">0 ₲</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Registrar Compra e Ingresar Stock</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Transferencia -->
+  <div class="modal fade" id="modalTransferencia" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Transferencia Interna entre Depósitos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formTransferencia">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Depósito de Origen</label>
+                <select id="trfOrigenId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Depósito de Destino</label>
+                <select id="trfDestinoId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Motivo / Justificación</label>
+                <input type="text" id="trfMotivo" class="form-control" placeholder="Ej: Reabastecimiento de mostrador matutino">
+              </div>
+            </div>
+
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold">Productos a Transferir</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarFilaTransferencia()">
+                  <i class="fa-solid fa-plus me-1"></i> Añadir Ítem
+                </button>
+              </div>
+              <div id="contenedorItemsTransferencia">
+                <!-- Dynamic transfer rows -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Confirmar Transferencia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ajuste de Inventario -->
+  <div class="modal fade" id="modalAjuste" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Ajuste de Inventario / Merma</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formAjusteStock">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Depósito</label>
+                <select id="ajusteDepositoId" class="form-select" required>
+                  <!-- Populated -->
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Tipo de Ajuste</label>
+                <select id="ajusteTipo" class="form-select" required>
+                  <option value="egreso">Egreso / Baja (-)</option>
+                  <option value="ingreso">Ingreso / Alta (+)</option>
+                  <option value="inventario_fisico">Recuento Físico (Sobrescribe)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Motivo</label>
+                <select id="ajusteMotivo" class="form-select" required>
+                  <option value="merma">Merma operativa / Desperdicio</option>
+                  <option value="vencimiento">Producto vencido / Caducado</option>
+                  <option value="rotura">Rotura / Daño físico</option>
+                  <option value="recuento_fisico">Ajuste por Recuento Físico</option>
+                  <option value="otro">Otro motivo</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Observaciones</label>
+                <input type="text" id="ajusteObservaciones" class="form-control" placeholder="Detalles de la causa del ajuste...">
+              </div>
+            </div>
+
+            <div class="border rounded p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold">Ítems a Ajustar</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarFilaAjuste()">
+                  <i class="fa-solid fa-plus me-1"></i> Añadir Ítem
+                </button>
+              </div>
+              <div id="contenedorItemsAjuste">
+                <!-- Dynamic rows -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold">Aplicar Ajuste</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ticket / Comprobante de Venta -->
+  <div class="modal fade" id="modalTicket" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Comprobante de Venta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modalTicketBody">
+          <!-- Ticket styled container -->
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Cliente -->
+  <div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Nuevo Cliente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoCliente">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">RUC / CI</label>
+              <input type="text" id="cliRuc" class="form-control" required placeholder="Ej: 4589632-1">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nombre y Apellido / Razón Social</label>
+              <input type="text" id="cliNombre" class="form-control" required placeholder="Ej: Juan Pérez">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Teléfono</label>
+              <input type="text" id="cliTelefono" class="form-control" placeholder="0981-000000">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Dirección</label>
+              <input type="text" id="cliDireccion" class="form-control" placeholder="Capiatá">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar Cliente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Proveedor -->
+  <div class="modal fade" id="modalNuevoProveedor" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Nuevo Proveedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoProveedor">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">RUC</label>
+              <input type="text" id="provRuc" class="form-control" required placeholder="80012345-6">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Razón Social</label>
+              <input type="text" id="provRazonSocial" class="form-control" required placeholder="Distribuidora...">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nombre de Contacto</label>
+              <input type="text" id="provContacto" class="form-control" placeholder="Carlos...">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Teléfono</label>
+              <input type="text" id="provTelefono" class="form-control" placeholder="021-...">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Dirección</label>
+              <input type="text" id="provDireccion" class="form-control" placeholder="Capiatá">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar Proveedor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Usuario -->
+  <div class="modal fade" id="modalNuevoUsuario" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Crear Nuevo Usuario del Sistema</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoUsuario">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nombre y Apellido</label>
+              <input type="text" id="usrNombre" class="form-control" required placeholder="Ej: Mario Gómez">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Correo Electrónico</label>
+              <input type="email" id="usrEmail" class="form-control" required placeholder="usuario@panaderia.com">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Contraseña Inicial</label>
+              <input type="password" id="usrPassword" class="form-control" required placeholder="******">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Rol / Perfil de Acceso</label>
+              <select id="usrRol" class="form-select" required>
+                <option value="admin">Administrador (Acceso total)</option>
+                <option value="deposito">Encargado de Inventario / Depósito</option>
+                <option value="vendedor">Vendedor / Cajero Mostrador</option>
+                <option value="produccion">Maestro Panadero / Producción</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Teléfono</label>
+              <input type="text" id="usrTelefono" class="form-control" placeholder="0981-...">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Crear Usuario</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+panaderia.db
+panaderia.db-journal
+.env
+npm-debug.log*
+.DS_Store
