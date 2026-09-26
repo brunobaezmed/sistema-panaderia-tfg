@@ -167,8 +167,8 @@
             </div>
           </div>
 
-          <button class="btn btn-warning text-white fw-semibold btn-sm shadow-sm" onclick="navigate('pos')" style="background-color: #d97706; border-color: #d97706;">
-            <i class="fa-solid fa-cart-shopping me-1"></i> Abrir POS
+          <button id="btnNavPOS" class="btn btn-warning text-white fw-semibold btn-sm shadow-sm" onclick="togglePOS()" style="background-color: #d97706; border-color: #d97706;" title="Abrir Punto de Venta (Mostrador)">
+            <i class="fa-solid fa-cart-shopping me-1"></i> <span>Abrir POS</span>
           </button>
 
           <!-- Separador vertical -->
@@ -573,6 +573,20 @@
 
         <!-- 5. POS / PUNTO DE VENTA VIEW -->
         <section id="view-pos" class="app-view d-none">
+          <!-- Barra superior del POS -->
+          <div class="card border-0 shadow-sm mb-3 bg-white">
+            <div class="card-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-cash-register me-1"></i> PUNTO DE VENTA (MOSTRADOR)</span>
+                <span class="text-muted small d-none d-md-inline">Facturación y despacho rápido al cliente</span>
+              </div>
+              <button class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm" onclick="navigate('dashboard')">
+                <i class="fa-solid fa-circle-xmark fs-6"></i>
+                <span>Cerrar POS / Volver al Panel</span>
+              </button>
+            </div>
+          </div>
+
           <div class="row g-3">
             <!-- Product Grid -->
             <div class="col-12 col-lg-8">

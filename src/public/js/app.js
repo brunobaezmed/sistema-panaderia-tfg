@@ -77,8 +77,38 @@ async function loadGlobalMetadata() {
   }
 }
 
+let currentActiveView = 'dashboard';
+
+function togglePOS() {
+  if (currentActiveView === 'pos') {
+    navigate('dashboard');
+  } else {
+    navigate('pos');
+  }
+}
+
 // Navigation Router
 function navigate(viewName) {
+  currentActiveView = viewName;
+
+  // Actualizar botón de POS en la barra superior dinámica
+  const btnNavPOS = document.getElementById('btnNavPOS');
+  if (btnNavPOS) {
+    if (viewName === 'pos') {
+      btnNavPOS.className = 'btn btn-outline-danger fw-bold btn-sm shadow-sm bg-white d-flex align-items-center gap-1';
+      btnNavPOS.style.backgroundColor = '#fff';
+      btnNavPOS.style.borderColor = '#dc3545';
+      btnNavPOS.innerHTML = '<i class="fa-solid fa-circle-xmark text-danger"></i> <span class="text-danger">Cerrar POS</span>';
+      btnNavPOS.title = 'Cerrar Punto de Venta y volver al panel';
+    } else {
+      btnNavPOS.className = 'btn btn-warning text-white fw-semibold btn-sm shadow-sm d-flex align-items-center gap-1';
+      btnNavPOS.style.backgroundColor = '#d97706';
+      btnNavPOS.style.borderColor = '#d97706';
+      btnNavPOS.innerHTML = '<i class="fa-solid fa-cart-shopping me-1"></i> <span>Abrir POS</span>';
+      btnNavPOS.title = 'Abrir Punto de Venta (Mostrador)';
+    }
+  }
+
   // Update sidebar links active class
   document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     if (link.getAttribute('data-view') === viewName) {
