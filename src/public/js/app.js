@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * MÓDULO CLIENTE: CONTROLADOR DE LA INTERFAZ SPA (app.js)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Controlador central de la aplicación Single Page Application (SPA):
+ * enrutamiento interno de vistas, Punto de Venta (POS), órdenes de producción,
+ * catálogos interactivos, actualización reactiva del carrito y gráficas.
+ */
+
 // Main Application Controller
 let chartVentasInstance = null;
 let productosGlobal = [];

@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * MÓDULO: CONFIGURACIÓN PRINCIPAL DE EXPRESS (app.js)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Configura la aplicación Express, middlewares globales (CORS, Morgan, JSON),
+ * publicación de archivos estáticos de la interfaz web SPA y enrutamiento
+ * de todos los endpoints de la API RESTful.
+ */
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');

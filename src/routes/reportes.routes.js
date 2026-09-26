@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: INFORMES GERENCIALES Y ESTADÍSTICAS (/api/reportes)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Genera reportes estratégicos: inventario valorizado a costo y precio de venta,
+ * resumen de ventas por método de pago, pérdidas por mermas y vencimientos.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { all, get } = require('../config/database');

@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: LIBRO KARDEX Y AUDITORÍA (/api/kardex)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Provee la trazabilidad y auditoría de inventario permanente (Kardex Físico-Valorado),
+ * detallando entradas, salidas, saldos y costos unitarios/totales en Guaraníes (₲).
+ */
+
 const express = require('express');
 const router = express.Router();
 const { all } = require('../config/database');

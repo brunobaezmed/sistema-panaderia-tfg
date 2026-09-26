@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: RECETARIO Y FÓRMULAS DE PANADERÍA (/api/recetas)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Gestiona las fórmulas estándar de panificación, cantidades requeridas
+ * de insumos por tanda y cálculo del costo teórico unitario de elaboración.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../config/database');

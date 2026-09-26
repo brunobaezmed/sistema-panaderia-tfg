@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: GESTIÓN DE COMPRAS Y PROVEEDORES (/api/compras)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Gestiona el registro de proveedores, facturas de compra de materias primas,
+ * recepción con control de lotes y fechas de vencimiento, e ingreso a Kardex.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run, actualizarStock, registrarKardex } = require('../config/database');

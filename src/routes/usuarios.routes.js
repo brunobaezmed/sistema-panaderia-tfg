@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: ADMINISTRACIÓN DE USUARIOS (/api/usuarios)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Gestión de usuarios, roles de acceso y contraseñas cifradas con bcrypt.
+ * Módulo de acceso restringido exclusivamente para administradores.
+ */
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');

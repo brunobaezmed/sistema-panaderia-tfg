@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: AJUSTES DE INVENTARIO Y MERMAS (/api/ajustes)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Permite registrar ajustes manuales de stock, bajas por vencimiento,
+ * mermas de horneado o rotura y sobrantes físicos, reflejándolos en Kardex.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run, actualizarStock, registrarKardex } = require('../config/database');

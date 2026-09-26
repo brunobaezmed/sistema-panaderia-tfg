@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: RUTAS DE AUTENTICACIÓN (/api/auth)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Gestiona el inicio de sesión, validación de contraseñas con bcrypt,
+ * emisión de tokens JWT y consulta del perfil del usuario autenticado.
+ */
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');

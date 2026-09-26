@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: RUTAS DEL DASHBOARD (/api/dashboard)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Proporciona los indicadores clave de rendimiento (KPIs), métricas del día,
+ * alertas preventivas de stock mínimo, vencimientos de lotes y gráficas.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all } = require('../config/database');

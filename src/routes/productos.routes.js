@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: CATÁLOGO DE PRODUCTOS E INSUMOS (/api/productos)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Administra el catálogo maestro de materias primas y panificados terminados:
+ * categorías, unidades de medida, costos, precios de venta, stock mínimo y lotes.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../config/database');

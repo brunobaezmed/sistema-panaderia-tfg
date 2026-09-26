@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: GESTIÓN DE DEPÓSITOS Y TRANSFERENCIAS (/api/depositos)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Administra los depósitos físicos (Central, Producción, Mostrador),
+ * consultas de existencias locales y transferencias internas con Kardex.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run, actualizarStock, registrarKardex } = require('../config/database');

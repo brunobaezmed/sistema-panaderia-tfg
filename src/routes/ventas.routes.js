@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO: PUNTO DE VENTA (POS) Y VENTAS (/api/ventas)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Procesa las transacciones de mostrador/POS, selección de clientes,
+ * liquidación de IVA 10%, descuento de lotes mediante FEFO/FIFO y tickets.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run, actualizarStock, registrarKardex } = require('../config/database');

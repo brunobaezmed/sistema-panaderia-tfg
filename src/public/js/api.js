@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * MÓDULO CLIENTE: SERVICIO DE COMUNICACIÓN HTTP (api.js)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Encapsula las solicitudes HTTP a la API RESTful (GET, POST, PUT, DELETE),
+ * inyección de cabeceras de autorización JWT y utilidades de formateo.
+ */
+
 // API helper with JWT token management and SweetAlert2 notifications
 const API = {
   baseURL: '/api',

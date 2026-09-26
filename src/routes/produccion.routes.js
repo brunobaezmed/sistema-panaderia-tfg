@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * MÓDULO: GESTIÓN DE PRODUCCIÓN Y HORNEADAS (/api/produccion)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Controla las órdenes de producción/horneadas, consumo automático de
+ * materias primas del depósito de origen y alta de panificados con asignación
+ * de lote y fecha de vencimiento según la receta.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { get, all, run, actualizarStock, registrarKardex } = require('../config/database');

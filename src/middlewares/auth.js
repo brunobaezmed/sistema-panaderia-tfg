@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * MÓDULO: MIDDLEWARE DE SEGURIDAD Y AUTENTICACIÓN (auth.js)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Provee la verificación de tokens JWT y control de acceso basado en roles (RBAC):
+ * - verifyToken: Valida la firma del token enviado en las cabeceras HTTP.
+ * - checkRole: Valida que el rol del usuario posea los permisos necesarios.
+ */
+
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tfg_panaderia_capiata_secret_key_2026';

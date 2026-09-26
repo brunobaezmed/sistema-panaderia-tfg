@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * MÓDULO: SERVIDOR PRINCIPAL (Entry Point)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - Universidad Gran Asunción (UNIGRAN)
+ * Autor: Bruno Matias Báez Medina | Capiatá, Paraguay
+ * ============================================================================
+ * Descripción:
+ * Punto de entrada de la aplicación Node.js. Carga variables de entorno,
+ * inicializa el esquema de base de datos SQLite y levanta el servidor HTTP.
+ */
+
 require('dotenv').config();
 const app = require('./app');
 const { initDatabase } = require('./config/database');

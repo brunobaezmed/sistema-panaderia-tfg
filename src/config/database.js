@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * MÓDULO: PERSISTENCIA Y BASE DE DATOS (database.js)
+ * Sistema de Gestión de Inventario y Producción para Panadería
+ * Trabajo Final de Grado (TFG) - UNIGRAN
+ * ============================================================================
+ * Descripción:
+ * Conexión a base de datos relacional SQLite ('panaderia.db').
+ * Provee funciones asíncronas para consultas SQL (run, get, all, exec),
+ * lógica de auditoría para el Libro Kardex, control de existencias por depósito,
+ * definición del esquema DDL (15+ tablas) y carga de semillas iniciales.
+ */
+
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
