@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagrama Entidad-Relación (DER) - Sistema Panadería</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    .header {
+      background: #ffffff;
+      padding: 20px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .header h1 {
+      margin: 0 0 5px 0;
+      font-size: 24px;
+      color: #0f172a;
+    }
+    .header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn:hover {
+      background-color: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background-color: #059669;
+    }
+    .btn-secondary:hover {
+      background-color: #047857;
+    }
+    .btn-outline {
+      background-color: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-outline:hover {
+      background-color: #f1f5f9;
+    }
+    .diagram-container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      overflow: auto;
+      text-align: center;
+      min-height: 600px;
+    }
+    @media print {
+      .header .toolbar {
+        display: none;
+      }
+      body {
+        background: white;
+        padding: 0;
+      }
+      .diagram-container {
+        box-shadow: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Diagrama Entidad-Relación (DER)</h1>
+      <p>Sistema de Gestión para Panadería y Confitería | Tesis UNIGRAN - Bruno Báez</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn" onclick="descargarPNG()">Descargar PNG (Alta resolución)</button>
+      <button class="btn btn-secondary" onclick="descargarSVG()">Descargar SVG</button>
+      <button class="btn btn-outline" onclick="window.print()">Imprimir / Guardar en PDF</button>
+    </div>
+  </div>
+
+  <div class="diagram-container" id="container">
+    <div class="mermaid" id="der-mermaid">
+erDiagram
+
+    ROLES {
+        int id PK
+        string nombre
+        string descripcion
+        int estado
+        datetime created_at
+    }
+
+    USUARIOS {
+        int id PK
+        string username
+        string password
+        string nombre
+        string apellido
+        string email
+        string telefono
+        int rol_id FK
+        int estado
+        datetime ultimo_acceso
+        datetime created_at
+    }
+
+    PERMISOS {
+        int id PK
+        string modulo
+        string accion
+        string descripcion
+    }
+
+    ROL_PERMISOS {
+        int id PK
+        int rol_id FK
+        int permiso_id FK
+    }
+
+    AUDITORIA {
+        int id PK
+        int usuario_id FK
+        string accion
+        string tabla
+        int registro_id
+        text datos_anteriores
+        text datos_nuevos
+        string ip_address
+        datetime created_at
+    }
+
+    CATEGORIAS {
+        int id PK
+        string nombre
+        string descripcion
+        int estado
+        datetime created_at
+    }
+
+    PROVEEDORES {
+        int id PK
+        string razon_social
+        string ruc
+        string telefono
+        string email
+        string direccion
+        string contacto_nombre
+        int estado
+        datetime created_at
+    }
+
+    INSUMOS {
+        int id PK
+        string codigo
+        string nombre
+        string descripcion
+        string unidad_medida
+        decimal stock_actual
+        decimal stock_minimo
+        decimal costo_unitario
+        int proveedor_id FK
+        int estado
+        datetime created_at
+    }
+
+    PRODUCTOS {
+        int id PK
+        string codigo
+        string nombre
+        string descripcion
+        int categoria_id FK
+        decimal precio_costo
+        decimal precio_venta
+        decimal stock_actual
+        decimal stock_minimo
+        string unidad_medida
+        string imagen
+        int estado
+        datetime created_at
+    }
+
+    RECETAS {
+        int id PK
+        int producto_id FK
+        string nombre
+        string descripcion
+        decimal rendimiento
+        string tiempo_preparacion
+        int estado
+        datetime created_at
+    }
+
+    RECETA_DETALLES {
+        int id PK
+        int receta_id FK
+        int insumo_id FK
+        decimal cantidad
+        string unidad_medida
+        decimal costo_calculado
+    }
+
+    ORDENES_PRODUCCION {
+        int id PK
+        string numero_orden
+        int producto_id FK
+        int receta_id FK
+        decimal cantidad_planificada
+        decimal cantidad_producida
+        string estado
+        date fecha_inicio
+        date fecha_fin
+        int usuario_id FK
+        text observaciones
+        datetime created_at
+    }
+
+    DETALLE_PRODUCCION {
+        int id PK
+        int orden_produccion_id FK
+        int insumo_id FK
+        decimal cantidad_utilizada
+        decimal costo_unitario
+        decimal costo_total
+    }
+
+    CLIENTES {
+        int id PK
+        string nombre
+        string apellido
+        string ruc_cedula
+        string telefono
+        string email
+        string direccion
+        int estado
+        datetime created_at
+    }
+
+    CAJAS {
+        int id PK
+        string nombre
+        string punto_expedicion
+        string establecimiento
+        int estado
+        datetime created_at
+    }
+
+    SESIONES_CAJA {
+        int id PK
+        int caja_id FK
+        int usuario_id FK
+        datetime fecha_apertura
+        datetime fecha_cierre
+        decimal monto_apertura
+        decimal monto_cierre
+        decimal diferencia
+        string estado
+        text observaciones
+    }
+
+    MOVIMIENTOS_CAJA {
+        int id PK
+        int sesion_caja_id FK
+        string tipo_movimiento
+        decimal monto
+        string concepto
+        int usuario_id FK
+        datetime created_at
+    }
+
+    VENTAS {
+        int id PK
+        string numero_factura
+        string timbrado
+        datetime fecha_venta
+        int cliente_id FK
+        int usuario_id FK
+        int sesion_caja_id FK
+        string forma_pago
+        string condicion_venta
+        decimal subtotal_exenta
+        decimal subtotal_iva5
+        decimal subtotal_iva10
+        decimal total_iva5
+        decimal total_iva10
+        decimal total_iva
+        decimal total
+        string estado
+        datetime created_at
+    }
+
+    DETALLE_VENTAS {
+        int id PK
+        int venta_id FK
+        int producto_id FK
+        decimal cantidad
+        decimal precio_unitario
+        decimal porcentaje_iva
+        decimal monto_iva
+        decimal subtotal
+    }
+
+    COMPRAS {
+        int id PK
+        string numero_factura
+        string timbrado
+        date fecha_compra
+        int proveedor_id FK
+        int usuario_id FK
+        string condicion_compra
+        decimal subtotal_exenta
+        decimal subtotal_iva5
+        decimal subtotal_iva10
+        decimal total_iva
+        decimal total
+        string estado
+        datetime created_at
+    }
+
+    DETALLE_COMPRAS {
+        int id PK
+        int compra_id FK
+        int insumo_id FK
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    PEDIDOS {
+        int id PK
+        string numero_pedido
+        int cliente_id FK
+        int usuario_id FK
+        datetime fecha_pedido
+        datetime fecha_entrega
+        decimal total
+        decimal saldo_pendiente
+        string estado
+        text observaciones
+        datetime created_at
+    }
+
+    DETALLE_PEDIDOS {
+        int id PK
+        int pedido_id FK
+        int producto_id FK
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    ROLES ||--o{ USUARIOS : "asigna a"
+    ROLES ||--o{ ROL_PERMISOS : "contiene"
+    PERMISOS ||--o{ ROL_PERMISOS : "se asocia en"
+    USUARIOS ||--o{ AUDITORIA : "registra acciones"
+
+    CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
+    PROVEEDORES ||--o{ INSUMOS : "suministra"
+
+    PRODUCTOS ||--o{ RECETAS : "tiene formula"
+    RECETAS ||--|{ RECETA_DETALLES : "se compone de"
+    INSUMOS ||--o{ RECETA_DETALLES : "es ingrediente"
+
+    PRODUCTOS ||--o{ ORDENES_PRODUCCION : "se elabora en"
+    RECETAS ||--o{ ORDENES_PRODUCCION : "sigue formula"
+    USUARIOS ||--o{ ORDENES_PRODUCCION : "supervisa"
+    ORDENES_PRODUCCION ||--|{ DETALLE_PRODUCCION : "consume"
+    INSUMOS ||--o{ DETALLE_PRODUCCION : "se gasta en"
+
+    CAJAS ||--o{ SESIONES_CAJA : "se abre en"
+    USUARIOS ||--o{ SESIONES_CAJA : "opera"
+    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "registra movimientos"
+    USUARIOS ||--o{ MOVIMIENTOS_CAJA : "autoriza"
+
+    CLIENTES ||--o{ VENTAS : "compra"
+    USUARIOS ||--o{ VENTAS : "factura"
+    SESIONES_CAJA ||--o{ VENTAS : "cobra en"
+    VENTAS ||--|{ DETALLE_VENTAS : "contiene items"
+    PRODUCTOS ||--o{ DETALLE_VENTAS : "se vende en"
+
+    PROVEEDORES ||--o{ COMPRAS : "provee"
+    USUARIOS ||--o{ COMPRAS : "registra compra"
+    COMPRAS ||--|{ DETALLE_COMPRAS : "detalla items"
+    INSUMOS ||--o{ DETALLE_COMPRAS : "se adquiere en"
+
+    CLIENTES ||--o{ PEDIDOS : "solicita"
+    USUARIOS ||--o{ PEDIDOS : "toma pedido"
+    PEDIDOS ||--|{ DETALLE_PEDIDOS : "incluye"
+    PRODUCTOS ||--o{ DETALLE_PEDIDOS : "se encarga en"
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      er: {
+        useMaxWidth: false
+      }
+    });
+
+    function getSVGElement() {
+      return document.querySelector('#der-mermaid svg');
+    }
+
+    function descargarSVG() {
+      const svg = getSVGElement();
+      if (!svg) {
+        alert('El diagrama todavía se está cargando. Espere unos segundos.');
+        return;
+      }
+      const serializer = new XMLSerializer();
+      let source = serializer.serializeToString(svg);
+
+      if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+        source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      const blob = new Blob([source], {type: "image/svg+xml;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Diagrama_Entidad_Relacion_Panaderia.svg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function descargarPNG() {
+      const svg = getSVGElement();
+      if (!svg) {
+        alert('El diagrama todavía se está cargando. Espere unos segundos.');
+        return;
+      }
+      const serializer = new XMLSerializer();
+      let source = serializer.serializeToString(svg);
+
+      if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+        source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      const img = new Image();
+      const svgBlob = new Blob([source], {type: "image/svg+xml;charset=utf-8"});
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        // Multiplicador 2x para resolución nítida en tesis
+        const scale = 2;
+        const bbox = svg.getBoundingClientRect();
+        canvas.width = (bbox.width || 2000) * scale;
+        canvas.height = (bbox.height || 1800) * scale;
+
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+
+        URL.revokeObjectURL(url);
+
+        const pngUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = "Diagrama_Entidad_Relacion_Panaderia.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+
+      img.src = url;
+    }
+  </script>
+</body>
+</html>
