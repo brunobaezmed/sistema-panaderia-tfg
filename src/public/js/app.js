@@ -44,6 +44,10 @@ async function checkAuth() {
     document.getElementById('userNombre').textContent = user.nombre;
     document.getElementById('userRol').textContent = user.rol.toUpperCase();
     document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
+    const uMenu = document.getElementById('userNombreMenu');
+    if (uMenu) uMenu.textContent = user.nombre;
+    const rMenu = document.getElementById('userRolMenu');
+    if (rMenu) rMenu.textContent = `Rol: ${user.rol.toUpperCase()}`;
 
     // Hide user management if not admin
     if (user.rol !== 'admin') {

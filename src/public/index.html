@@ -125,23 +125,6 @@
           <i class="fa-solid fa-users-gear"></i> <span>Usuarios & Accesos</span>
         </a>
       </div>
-
-      <div class="p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-20">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-2 overflow-hidden">
-            <div class="bg-warning text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-              <span id="userAvatar">A</span>
-            </div>
-            <div class="text-truncate">
-              <div id="userNombre" class="text-white small fw-bold text-truncate">Bruno Báez</div>
-              <div id="userRol" class="text-secondary" style="font-size: 0.7rem;">Administrador</div>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-outline-danger border-0" onclick="API.logout()" title="Cerrar Sesión">
-            <i class="fa-solid fa-right-from-bracket"></i>
-          </button>
-        </div>
-      </div>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -155,8 +138,8 @@
           </span>
         </div>
 
-        <div class="d-flex align-items-center gap-3">
-          <div class="text-muted small d-none d-md-block">
+        <div class="d-flex align-items-center gap-2 gap-md-3">
+          <div class="text-muted small d-none d-lg-block">
             <i class="fa-regular fa-clock me-1"></i> <span id="liveClock">--:--:--</span>
           </div>
 
@@ -187,6 +170,43 @@
           <button class="btn btn-warning text-white fw-semibold btn-sm shadow-sm" onclick="navigate('pos')" style="background-color: #d97706; border-color: #d97706;">
             <i class="fa-solid fa-cart-shopping me-1"></i> Abrir POS
           </button>
+
+          <!-- Separador vertical -->
+          <div class="vr my-auto mx-1 text-secondary opacity-25 d-none d-sm-block" style="height: 28px;"></div>
+
+          <!-- Perfil de Usuario y Acceso de Salida arriba ordenadamente -->
+          <div class="d-flex align-items-center gap-2">
+            <div class="dropdown">
+              <button class="btn btn-light border d-flex align-items-center gap-2 py-1 px-2 rounded-pill shadow-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Perfil de usuario">
+                <div class="bg-warning text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                  <span id="userAvatar">B</span>
+                </div>
+                <div class="text-start me-1 d-none d-sm-block">
+                  <div id="userNombre" class="fw-bold text-dark lh-1 small text-truncate" style="max-width: 140px;">Bruno Báez</div>
+                  <small id="userRol" class="text-muted fw-semibold" style="font-size: 0.65rem;">ADMINISTRADOR</small>
+                </div>
+                <i class="fa-solid fa-chevron-down text-muted small ms-1"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2" style="border-radius: 0.75rem; min-width: 210px;">
+                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                  <div class="fw-bold text-dark small" id="userNombreMenu">Bruno Báez</div>
+                  <small class="text-muted" id="userRolMenu">Sesión iniciada</small>
+                </li>
+                <li>
+                  <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2 fw-semibold" onclick="API.logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Cerrar Sesión</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Botón de Salir directo siempre visible -->
+            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 py-1 px-2 px-md-3 rounded-pill border shadow-sm" onclick="API.logout()" title="Cerrar Sesión">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span class="small fw-bold d-none d-md-inline">Salir</span>
+            </button>
+          </div>
         </div>
       </header>
 
