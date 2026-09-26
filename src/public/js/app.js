@@ -5,6 +5,7 @@ let categoriasGlobal = [];
 let unidadesGlobal = [];
 let depositosGlobal = [];
 let posCart = [];
+let posProductsList = [];
 
 // Initialize application on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -63,15 +64,17 @@ async function checkAuth() {
 // Load metadata needed across modules
 async function loadGlobalMetadata() {
   try {
-    const [resCat, resUn, resDep] = await Promise.all([
+    const [resCat, resUn, resDep, resProd] = await Promise.all([
       API.get('/productos/meta/categorias'),
       API.get('/productos/meta/unidades'),
-      API.get('/depositos')
+      API.get('/depositos'),
+      API.get('/productos')
     ]);
 
     categoriasGlobal = resCat.categorias || [];
     unidadesGlobal = resUn.unidades || [];
     depositosGlobal = resDep.depositos || [];
+    productosGlobal = resProd.productos || [];
   } catch (err) {
     console.error('Error loading metadata:', err);
   }
@@ -964,7 +967,20 @@ async function cargarPOSView() {
       API.get('/ventas/clientes')
     ]);
 
-    const prods = resProd.productos || [];
+    posProductsList = resProd.productos || [];
+
+    // Sincronizar productos en memoria global
+    if (!productosGlobal || productosGlobal.length === 0) {
+      productosGlobal = [...posProductsList];
+    } else {
+      posProductsList.forEach(p => {
+        const idx = productosGlobal.findIndex(item => item.id === p.id);
+        if (idx !== -1) productosGlobal[idx] = p;
+        else productosGlobal.push(p);
+      });
+    }
+
+    const prods = posProductsList;
     const clients = resCli.clientes || [];
 
     // Client select
@@ -992,7 +1008,7 @@ function renderPOSProducts(prods) {
 
   container.innerHTML = prods.map(p => `
     <div class="col-6 col-sm-4 col-md-3">
-      <div class="pos-product-card" onclick="posAddToCart(${p.id})">
+      <div class="pos-product-card shadow-sm" onclick="posAddToCart(${p.id})">
         <div>
           <span class="badge bg-secondary-subtle text-dark small mb-1"><code>${p.codigo}</code></span>
           <div class="fw-bold text-dark mb-1">${p.nombre}</div>
@@ -1015,7 +1031,8 @@ function posFilterCategory(catName) {
   });
 
   const search = document.getElementById('posSearchProduct').value.toLowerCase();
-  const filtered = productosGlobal.filter(p => {
+  const source = (posProductsList && posProductsList.length > 0) ? posProductsList : productosGlobal;
+  const filtered = source.filter(p => {
     if (p.tipo !== 'producto_terminado') return false;
     const matchCat = !catName || p.categoria_nombre === catName;
     const matchSearch = !search || p.nombre.toLowerCase().includes(search) || p.codigo.toLowerCase().includes(search);
@@ -1026,8 +1043,12 @@ function posFilterCategory(catName) {
 }
 
 function posAddToCart(prodId) {
-  const p = productosGlobal.find(item => item.id === prodId);
-  if (!p) return;
+  const p = (posProductsList && posProductsList.find(item => item.id === prodId)) ||
+            (productosGlobal && productosGlobal.find(item => item.id === prodId));
+  if (!p) {
+    console.error('Producto no encontrado en inventario para el carrito:', prodId);
+    return;
+  }
 
   const existing = posCart.find(item => item.producto_id === prodId);
   if (existing) {
