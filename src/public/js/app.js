@@ -1353,7 +1353,7 @@ async function cargarComprasView() {
     const tbody = document.getElementById('tablaCompras');
 
     if (compras.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay facturas de compras registradas</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No hay facturas de compras registradas</td></tr>';
       return;
     }
 
@@ -1366,8 +1366,11 @@ async function cargarComprasView() {
         <td>${c.deposito_nombre}</td>
         <td class="fw-bold text-primary">${API.formatGs(c.total)}</td>
         <td><span class="badge bg-light text-dark border">${c.condicion}</span></td>
+        <td>
+          ${c.numero_orden ? `<span class="badge bg-success-subtle text-success border border-success">${c.numero_orden}</span>` : '<span class="text-muted small">Directa</span>'}
+        </td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-secondary py-0" onclick="verDetalleCompra(${c.id})">
+          <button class="btn btn-sm btn-outline-secondary py-0" onclick="verDetalleCompra(${c.id})" title="Ver Detalle Factura">
             <i class="fa-solid fa-eye"></i>
           </button>
         </td>
@@ -3026,5 +3029,820 @@ async function verReciboOficial(cobroId) {
     modal.show();
   } catch (err) {
     Swal.fire('Error', 'No se pudo cargar el recibo oficial', 'error');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 14. GESTIÓN DE PEDIDOS INTERNOS DE COMPRAS
+// --------------------------------------------------------------------------
+async function cargarPedidosCompras() {
+  try {
+    const res = await API.get('/compras/pedidos');
+    const tbody = document.getElementById('tablaPedidosCompras');
+    if (!tbody) return;
+
+    if (!res.success || !res.pedidos.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay pedidos internos de compras registrados</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = res.pedidos.map(p => {
+      let badgePrioridad = 'bg-secondary';
+      if (p.prioridad === 'alta') badgePrioridad = 'bg-warning text-dark';
+      if (p.prioridad === 'urgente') badgePrioridad = 'bg-danger';
+
+      let badgeEstado = 'bg-primary';
+      if (p.estado === 'aprobado') badgeEstado = 'bg-success';
+      if (p.estado === 'rechazado') badgeEstado = 'bg-danger';
+      if (p.estado === 'procesado') badgeEstado = 'bg-info text-dark';
+
+      return `
+        <tr>
+          <td><strong>${p.numero_pedido}</strong></td>
+          <td>${p.fecha_pedido}</td>
+          <td>${p.fecha_requerida || '-'}</td>
+          <td>${p.usuario_nombre}</td>
+          <td><span class="badge ${badgePrioridad}">${p.prioridad.toUpperCase()}</span></td>
+          <td><span class="badge ${badgeEstado}">${p.estado.toUpperCase()}</span></td>
+          <td class="text-center"><span class="badge bg-light text-dark border">${p.total_items} ítems</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary py-0" onclick="verComprobantePedidoCompra(${p.id})" title="Imprimir Pedido">
+              <i class="fa-solid fa-print"></i>
+            </button>
+            ${p.estado === 'pendiente' ? `
+              <button class="btn btn-sm btn-outline-success py-0 ms-1" onclick="cambiarEstadoPedido(${p.id}, 'aprobado')" title="Aprobar Solicitud">
+                <i class="fa-solid fa-check"></i>
+              </button>
+            ` : ''}
+            ${p.estado === 'aprobado' ? `
+              <button class="btn btn-sm btn-success py-0 ms-1" onclick="generarOrdenDesdePedido(${p.id})" title="Generar Orden de Compra">
+                <i class="fa-solid fa-truck-ramp-box me-1"></i> Orden
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error cargando pedidos compras:', err);
+  }
+}
+
+async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+  try {
+    const res = await API.put(`/compras/pedidos/${pedidoId}/estado`, { estado: nuevoEstado });
+    if (res.success) {
+      Swal.fire('Actualizado', res.message, 'success');
+      cargarPedidosCompras();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+function abrirModalNuevoPedidoCompra() {
+  document.getElementById('pedFechaPedido').value = new Date().toISOString().split('T')[0];
+  document.getElementById('pedFechaRequerida').value = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  document.getElementById('pedPrioridad').value = 'normal';
+  document.getElementById('pedObservaciones').value = '';
+  document.getElementById('contenedorItemsPedidoCompra').innerHTML = '';
+  agregarFilaPedidoCompra();
+  const modal = new bootstrap.Modal(document.getElementById('modalNuevoPedidoCompra'));
+  modal.show();
+}
+
+function agregarFilaPedidoCompra(productoId = '', cantidad = 1) {
+  const cont = document.getElementById('contenedorItemsPedidoCompra');
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 fila-item-pedido';
+
+  const prods = productosGlobal.filter(p => p.tipo === 'materia_prima');
+  div.innerHTML = `
+    <div class="col-6">
+      <select class="form-select form-select-sm ped-prod-id" required>
+        <option value="">-- Seleccionar Insumo --</option>
+        ${prods.map(p => `
+          <option value="${p.id}" ${p.id == productoId ? 'selected' : ''}>${p.nombre} (${p.codigo}) - Disp: ${p.stock_total || 0}</option>
+        `).join('')}
+      </select>
+    </div>
+    <div class="col-3">
+      <input type="number" class="form-control form-control-sm ped-cantidad" min="0.1" step="0.1" value="${cantidad}" required placeholder="Cantidad">
+    </div>
+    <div class="col-2">
+      <input type="text" class="form-control form-control-sm ped-obs" placeholder="Nota/Uso">
+    </div>
+    <div class="col-1 text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger py-0 border-0" onclick="this.closest('.fila-item-pedido').remove()">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `;
+  cont.appendChild(div);
+}
+
+async function guardarNuevoPedidoCompra(e) {
+  e.preventDefault();
+  const filas = document.querySelectorAll('.fila-item-pedido');
+  const items = [];
+  filas.forEach(f => {
+    const prodId = f.querySelector('.ped-prod-id').value;
+    const cant = parseFloat(f.querySelector('.ped-cantidad').value) || 0;
+    const obs = f.querySelector('.ped-obs').value;
+    if (prodId && cant > 0) {
+      items.push({ producto_id: parseInt(prodId), cantidad_solicitada: cant, observaciones: obs });
+    }
+  });
+
+  if (!items.length) {
+    Swal.fire('Atención', 'Debe agregar al menos un insumo con cantidad válida', 'warning');
+    return;
+  }
+
+  try {
+    const res = await API.post('/compras/pedidos', {
+      fecha_pedido: document.getElementById('pedFechaPedido').value,
+      fecha_requerida: document.getElementById('pedFechaRequerida').value,
+      prioridad: document.getElementById('pedPrioridad').value,
+      observaciones: document.getElementById('pedObservaciones').value,
+      items
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevoPedidoCompra')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Pedido Registrado',
+        text: `Solicitud ${res.numeroPedido} emitida correctamente.`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Solicitud',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          verComprobantePedidoCompra(res.pedidoId);
+        }
+      });
+      cargarPedidosCompras();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verComprobantePedidoCompra(id) {
+  try {
+    const res = await API.get(`/compras/pedidos/${id}`);
+    if (!res.success) return;
+    const { pedido, detalles } = res;
+
+    const html = `
+      <div class="border p-4 bg-white" style="font-family: monospace; font-size: 13px;">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+          <div>
+            <h5 class="fw-bold mb-0">PANADERÍA Y CONFITERÍA CAPIATÁ</h5>
+            <small class="text-muted">SOLICITUD INTERNA DE COMPRA DE MATERIAS PRIMAS</small>
+          </div>
+          <div class="text-end">
+            <span class="badge bg-warning text-dark mb-1">PEDIDO INTERNO</span>
+            <div class="fw-bold fs-5 text-dark">${pedido.numero_pedido}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3 small">
+          <div class="col-6">
+            <strong>Solicitante:</strong> ${pedido.usuario_nombre}<br>
+            <strong>Fecha Emisión:</strong> ${pedido.fecha_pedido}<br>
+            <strong>Fecha Requerida:</strong> ${pedido.fecha_requerida || 'Inmediata'}
+          </div>
+          <div class="col-6 text-end">
+            <strong>Prioridad:</strong> <span class="badge bg-secondary">${pedido.prioridad.toUpperCase()}</span><br>
+            <strong>Estado:</strong> <span class="badge bg-primary">${pedido.estado.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <table class="w-100 table table-sm table-bordered small mb-3">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Código</th>
+              <th>Insumo / Materia Prima</th>
+              <th class="text-end">Cantidad Requerida</th>
+              <th>Observación / Uso</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${detalles.map((d, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td><code>${d.producto_codigo}</code></td>
+                <td><strong>${d.producto_nombre}</strong></td>
+                <td class="text-end fw-bold">${d.cantidad_solicitada} ${d.unidad_simbolo || ''}</td>
+                <td>${d.observaciones || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        ${pedido.observaciones ? `<div class="mb-3 small"><strong>Justificación:</strong> ${pedido.observaciones}</div>` : ''}
+
+        <div class="row text-center mt-5 pt-3">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma Solicitante / Panadería</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Autorización de Compras / Admin</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobantePedidoBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobantePedidoCompra'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar el pedido de compra', 'error');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 15. GESTIÓN DE ÓRDENES DE COMPRA AL PROVEEDOR
+// --------------------------------------------------------------------------
+async function cargarOrdenesCompras() {
+  try {
+    const res = await API.get('/compras/ordenes');
+    const tbody = document.getElementById('tablaOrdenesCompras');
+    if (!tbody) return;
+
+    if (!res.success || !res.ordenes.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay órdenes de compra emitidas</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = res.ordenes.map(oc => {
+      let badgeEstado = 'bg-primary';
+      if (oc.estado === 'recibida') badgeEstado = 'bg-success';
+      if (oc.estado === 'cancelada') badgeEstado = 'bg-danger';
+
+      return `
+        <tr>
+          <td><strong>${oc.numero_orden}</strong></td>
+          <td>${oc.fecha_orden}</td>
+          <td>
+            <strong>${oc.proveedor_nombre}</strong><br>
+            <small class="text-muted">RUC: ${oc.proveedor_ruc}</small>
+          </td>
+          <td>${oc.fecha_entrega_esperada || '-'}</td>
+          <td><span class="badge bg-light text-dark border">${oc.condicion_pago}</span></td>
+          <td class="text-end fw-bold text-success">${API.formatGs(oc.total)}</td>
+          <td><span class="badge ${badgeEstado}">${oc.estado.toUpperCase()}</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary py-0" onclick="verComprobanteOrdenCompra(${oc.id})" title="Imprimir Orden">
+              <i class="fa-solid fa-print"></i>
+            </button>
+            ${oc.estado === 'emitida' ? `
+              <button class="btn btn-sm btn-success py-0 ms-1" onclick="recepcionarOrdenEnFactura(${oc.id})" title="Recepcionar / Cargar Factura">
+                <i class="fa-solid fa-cart-flatbed me-1"></i> Facturar
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error cargando órdenes de compra:', err);
+  }
+}
+
+async function abrirModalNuevaOrdenCompra() {
+  document.getElementById('ocPedidoOrigenId').value = '';
+  document.getElementById('ocFechaOrden').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ocFechaEntrega').value = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  document.getElementById('ocCondicionPago').value = 'contado';
+  document.getElementById('ocObservaciones').value = '';
+  document.getElementById('contenedorItemsOrdenCompra').innerHTML = '';
+
+  const resProv = await API.get('/compras/proveedores');
+  const selectProv = document.getElementById('ocProveedorId');
+  if (resProv.success && resProv.proveedores) {
+    selectProv.innerHTML = '<option value="">-- Seleccionar Proveedor --</option>' + resProv.proveedores.map(p => `
+      <option value="${p.id}">${p.razon_social} (RUC: ${p.ruc})</option>
+    `).join('');
+  }
+
+  agregarFilaOrdenCompra();
+  const modal = new bootstrap.Modal(document.getElementById('modalNuevaOrdenCompra'));
+  modal.show();
+}
+
+async function generarOrdenDesdePedido(pedidoId) {
+  try {
+    const res = await API.get(`/compras/pedidos/${pedidoId}`);
+    if (!res.success) return;
+    const { pedido, detalles } = res;
+
+    await abrirModalNuevaOrdenCompra();
+    document.getElementById('ocPedidoOrigenId').value = pedido.id;
+    document.getElementById('ocObservaciones').value = `Generada a partir del ${pedido.numero_pedido}: ${pedido.observaciones || ''}`;
+
+    const cont = document.getElementById('contenedorItemsOrdenCompra');
+    cont.innerHTML = '';
+
+    for (const d of detalles) {
+      const prod = productosGlobal.find(p => p.id == d.producto_id);
+      const precioEstimado = prod ? (prod.precio_costo || 0) : 0;
+      agregarFilaOrdenCompra(d.producto_id, d.cantidad_solicitada, precioEstimado);
+    }
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo precargar la información del pedido', 'error');
+  }
+}
+
+function agregarFilaOrdenCompra(productoId = '', cantidad = 1, precioUnitario = 0) {
+  const cont = document.getElementById('contenedorItemsOrdenCompra');
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 fila-item-orden';
+
+  const prods = productosGlobal.filter(p => p.tipo === 'materia_prima');
+  div.innerHTML = `
+    <div class="col-5">
+      <select class="form-select form-select-sm oc-prod-id" required onchange="actualizarPrecioCostoFilaOrden(this)">
+        <option value="">-- Seleccionar Insumo --</option>
+        ${prods.map(p => `
+          <option value="${p.id}" data-costo="${p.precio_costo || 0}" ${p.id == productoId ? 'selected' : ''}>${p.nombre} (${p.codigo})</option>
+        `).join('')}
+      </select>
+    </div>
+    <div class="col-2">
+      <input type="number" class="form-control form-control-sm oc-cantidad" min="0.1" step="0.1" value="${cantidad}" required placeholder="Cant." oninput="calcularTotalOrdenCompra()">
+    </div>
+    <div class="col-3">
+      <input type="number" class="form-control form-control-sm oc-precio" min="0" step="500" value="${precioUnitario}" required placeholder="Precio Acordado" oninput="calcularTotalOrdenCompra()">
+    </div>
+    <div class="col-2 text-end d-flex align-items-center justify-content-end gap-1">
+      <span class="small fw-bold oc-subtotal-txt">0 ₲</span>
+      <button type="button" class="btn btn-sm btn-outline-danger py-0 border-0" onclick="this.closest('.fila-item-orden').remove(); calcularTotalOrdenCompra();">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `;
+  cont.appendChild(div);
+  calcularTotalOrdenCompra();
+}
+
+function actualizarPrecioCostoFilaOrden(selectElem) {
+  const selected = selectElem.options[selectElem.selectedIndex];
+  const costo = selected.getAttribute('data-costo') || 0;
+  const fila = selectElem.closest('.fila-item-orden');
+  fila.querySelector('.oc-precio').value = costo;
+  calcularTotalOrdenCompra();
+}
+
+function calcularTotalOrdenCompra() {
+  const filas = document.querySelectorAll('.fila-item-orden');
+  let total = 0;
+  filas.forEach(f => {
+    const cant = parseFloat(f.querySelector('.oc-cantidad').value) || 0;
+    const precio = parseFloat(f.querySelector('.oc-precio').value) || 0;
+    const subtotal = cant * precio;
+    total += subtotal;
+    const subtxt = f.querySelector('.oc-subtotal-txt');
+    if (subtxt) subtxt.textContent = API.formatGs(subtotal);
+  });
+  const totalTxt = document.getElementById('ocTotalTxt');
+  if (totalTxt) totalTxt.textContent = API.formatGs(total);
+}
+
+async function guardarNuevaOrdenCompra(e) {
+  e.preventDefault();
+  const proveedorId = document.getElementById('ocProveedorId').value;
+  const pedidoOrigenId = document.getElementById('ocPedidoOrigenId').value;
+  const filas = document.querySelectorAll('.fila-item-orden');
+  const items = [];
+
+  filas.forEach(f => {
+    const prodId = f.querySelector('.oc-prod-id').value;
+    const cant = parseFloat(f.querySelector('.oc-cantidad').value) || 0;
+    const precio = parseFloat(f.querySelector('.oc-precio').value) || 0;
+    if (prodId && cant > 0) {
+      items.push({ producto_id: parseInt(prodId), cantidad: cant, precio_unitario: precio });
+    }
+  });
+
+  if (!items.length) {
+    Swal.fire('Atención', 'Debe agregar al menos un ítem a la orden', 'warning');
+    return;
+  }
+
+  try {
+    const res = await API.post('/compras/ordenes', {
+      proveedor_id: parseInt(proveedorId),
+      pedido_compra_id: pedidoOrigenId ? parseInt(pedidoOrigenId) : null,
+      fecha_orden: document.getElementById('ocFechaOrden').value,
+      fecha_entrega_esperada: document.getElementById('ocFechaEntrega').value,
+      condicion_pago: document.getElementById('ocCondicionPago').value,
+      observaciones: document.getElementById('ocObservaciones').value,
+      items
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevaOrdenCompra')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Orden de Compra Emitida',
+        text: `Orden ${res.numeroOrden} generada con éxito por ${API.formatGs(res.total)}.`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Orden',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          verComprobanteOrdenCompra(res.ordenId);
+        }
+      });
+      cargarOrdenesCompras();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verComprobanteOrdenCompra(id) {
+  try {
+    const res = await API.get(`/compras/ordenes/${id}`);
+    if (!res.success) return;
+    const { orden, detalles } = res;
+
+    const html = `
+      <div class="border p-4 bg-white" style="font-family: monospace; font-size: 13px;">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+          <div>
+            <h5 class="fw-bold mb-0">PANADERÍA Y CONFITERÍA CAPIATÁ</h5>
+            <small class="text-muted">ORDEN OFICIAL DE COMPRA A PROVEEDORES</small><br>
+            <small class="text-muted">RUC: 80012345-6 | Tel: 0228-634500 | Capiatá - Paraguay</small>
+          </div>
+          <div class="text-end">
+            <span class="badge bg-success mb-1">ORDEN DE COMPRA</span>
+            <div class="fw-bold fs-5 text-success">${orden.numero_orden}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3 small">
+          <div class="col-7">
+            <strong>SEÑOR(ES):</strong> ${orden.proveedor_nombre}<br>
+            <strong>RUC:</strong> ${orden.proveedor_ruc} | <strong>Tel:</strong> ${orden.proveedor_telefono || '-'}<br>
+            <strong>Dirección:</strong> ${orden.proveedor_direccion || 'Capiatá'}
+          </div>
+          <div class="col-5 text-end">
+            <strong>Fecha Emisión:</strong> ${orden.fecha_orden}<br>
+            <strong>Entrega Esperada:</strong> ${orden.fecha_entrega_esperada || 'Inmediata'}<br>
+            <strong>Condición:</strong> ${orden.condicion_pago.toUpperCase()}<br>
+            <strong>Emitido por:</strong> ${orden.usuario_nombre}
+          </div>
+        </div>
+
+        <table class="w-100 table table-sm table-bordered small mb-3">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Código</th>
+              <th>Descripción del Insumo</th>
+              <th class="text-end">Cantidad</th>
+              <th class="text-end">Precio Acordado</th>
+              <th class="text-end">Subtotal (₲)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${detalles.map((d, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td><code>${d.producto_codigo}</code></td>
+                <td><strong>${d.producto_nombre}</strong></td>
+                <td class="text-end">${d.cantidad} ${d.unidad_simbolo || ''}</td>
+                <td class="text-end">${API.formatGs(d.precio_unitario)}</td>
+                <td class="text-end fw-bold">${API.formatGs(d.subtotal)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="table-light">
+              <th colspan="5" class="text-end">TOTAL ORDEN DE COMPRA:</th>
+              <th class="text-end fs-6 text-success">${API.formatGs(orden.total)}</th>
+            </tr>
+          </tfoot>
+        </table>
+
+        ${orden.observaciones ? `<div class="mb-3 small"><strong>Instrucciones de Entrega:</strong> ${orden.observaciones}</div>` : ''}
+
+        <div class="row text-center mt-5 pt-3">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y Sello Panadería Capiatá</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Aceptación y Firma Proveedor</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobanteOrdenBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobanteOrdenCompra'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar la orden de compra', 'error');
+  }
+}
+
+async function recepcionarOrdenEnFactura(ordenId) {
+  try {
+    const res = await API.get(`/compras/ordenes/${ordenId}`);
+    if (!res.success) return;
+    const { orden, detalles } = res;
+
+    // Cambiar a la pestaña de facturas y abrir modal de compra
+    abrirModalNuevaCompra();
+
+    document.getElementById('compraProveedor').value = orden.proveedor_id;
+    document.getElementById('compraCondicion').value = orden.condicion_pago.includes('credito') ? 'credito' : 'contado';
+    document.getElementById('compraObservaciones').value = `Recepción de Orden ${orden.numero_orden}`;
+
+    const cont = document.getElementById('contenedorItemsCompra');
+    cont.innerHTML = '';
+
+    for (const d of detalles) {
+      agregarFilaCompra(d.producto_id, d.cantidad, d.precio_unitario);
+    }
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo vincular la orden de compra', 'error');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 16. GESTIÓN DE NOTAS DE CRÉDITO DE PROVEEDORES
+// --------------------------------------------------------------------------
+async function cargarNotasCreditoCompras() {
+  try {
+    const res = await API.get('/compras/notas-credito');
+    const tbody = document.getElementById('tablaNotasCreditoCompras');
+    if (!tbody) return;
+
+    if (!res.success || !res.notas.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay notas de crédito registradas</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = res.notas.map(nc => `
+      <tr>
+        <td><strong>${nc.numero_nota}</strong></td>
+        <td><code>${nc.timbrado || '12345678'}</code></td>
+        <td>${nc.fecha_emision}</td>
+        <td><strong>${nc.proveedor_nombre}</strong></td>
+        <td><span class="badge bg-light text-dark border">Fact. ${nc.factura_compra}</span></td>
+        <td><span class="badge bg-secondary">${nc.motivo.replace(/_/g, ' ').toUpperCase()}</span></td>
+        <td class="text-end fw-bold text-danger">${API.formatGs(nc.total)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger py-0" onclick="verComprobanteNotaCredito(${nc.id})" title="Imprimir Nota de Crédito">
+            <i class="fa-solid fa-print"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error cargando notas de crédito:', err);
+  }
+}
+
+async function abrirModalNuevaNotaCredito() {
+  try {
+    const resCompras = await API.get('/compras');
+    const select = document.getElementById('ncCompraId');
+    if (resCompras.success && resCompras.compras) {
+      select.innerHTML = '<option value="">-- Seleccionar Factura de Compra --</option>' + resCompras.compras.map(c => `
+        <option value="${c.id}" data-prov-id="${c.proveedor_id}" data-prov-nombre="${c.proveedor_nombre}">
+          Fact. ${c.numero_factura} - ${c.proveedor_nombre} (${c.fecha_compra})
+        </option>
+      `).join('');
+    }
+
+    document.getElementById('ncNumero').value = `NC-001-001-${Date.now().toString().slice(-6)}`;
+    document.getElementById('ncTimbrado').value = '12345678';
+    document.getElementById('ncFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('ncMotivo').value = 'devolucion_mercaderia';
+    document.getElementById('ncObservaciones').value = '';
+    document.getElementById('contenedorItemsNotaCredito').innerHTML = '';
+    document.getElementById('ncTotalTxt').textContent = '0 ₲';
+
+    const modal = new bootstrap.Modal(document.getElementById('modalNuevaNotaCredito'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudieron cargar las compras existentes', 'error');
+  }
+}
+
+async function cargarDetallesCompraParaNC() {
+  const compraId = document.getElementById('ncCompraId').value;
+  if (!compraId) return;
+
+  try {
+    const res = await API.get(`/compras/${compraId}`);
+    if (!res.success) return;
+    const { compra, detalles } = res;
+
+    const cont = document.getElementById('contenedorItemsNotaCredito');
+    cont.innerHTML = '';
+
+    for (const d of detalles) {
+      agregarFilaNotaCredito(d.producto_id, d.cantidad, d.precio_unitario);
+    }
+  } catch (err) {
+    console.error('Error cargando detalles para NC:', err);
+  }
+}
+
+function agregarFilaNotaCredito(productoId = '', cantidad = 1, precioUnitario = 0) {
+  const cont = document.getElementById('contenedorItemsNotaCredito');
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 fila-item-nc';
+
+  const prods = productosGlobal.filter(p => p.tipo === 'materia_prima');
+  div.innerHTML = `
+    <div class="col-5">
+      <select class="form-select form-select-sm nc-prod-id" required>
+        <option value="">-- Insumo --</option>
+        ${prods.map(p => `
+          <option value="${p.id}" ${p.id == productoId ? 'selected' : ''}>${p.nombre} (${p.codigo})</option>
+        `).join('')}
+      </select>
+    </div>
+    <div class="col-2">
+      <input type="number" class="form-control form-control-sm nc-cantidad" min="0.1" step="0.1" value="${cantidad}" required placeholder="Cant." oninput="calcularTotalNotaCredito()">
+    </div>
+    <div class="col-3">
+      <input type="number" class="form-control form-control-sm nc-precio" min="0" step="500" value="${precioUnitario}" required placeholder="Precio" oninput="calcularTotalNotaCredito()">
+    </div>
+    <div class="col-2 text-end d-flex align-items-center justify-content-end gap-1">
+      <span class="small fw-bold nc-subtotal-txt">0 ₲</span>
+      <button type="button" class="btn btn-sm btn-outline-danger py-0 border-0" onclick="this.closest('.fila-item-nc').remove(); calcularTotalNotaCredito();">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `;
+  cont.appendChild(div);
+  calcularTotalNotaCredito();
+}
+
+function calcularTotalNotaCredito() {
+  const filas = document.querySelectorAll('.fila-item-nc');
+  let total = 0;
+  filas.forEach(f => {
+    const cant = parseFloat(f.querySelector('.nc-cantidad').value) || 0;
+    const precio = parseFloat(f.querySelector('.nc-precio').value) || 0;
+    const subtotal = cant * precio;
+    total += subtotal;
+    const subtxt = f.querySelector('.nc-subtotal-txt');
+    if (subtxt) subtxt.textContent = API.formatGs(subtotal);
+  });
+  const totalTxt = document.getElementById('ncTotalTxt');
+  if (totalTxt) totalTxt.textContent = API.formatGs(total);
+}
+
+async function guardarNuevaNotaCredito(e) {
+  e.preventDefault();
+  const compraSelect = document.getElementById('ncCompraId');
+  const compraId = compraSelect.value;
+  const selectedOption = compraSelect.options[compraSelect.selectedIndex];
+  const proveedorId = selectedOption.getAttribute('data-prov-id');
+
+  const filas = document.querySelectorAll('.fila-item-nc');
+  const items = [];
+  filas.forEach(f => {
+    const prodId = f.querySelector('.nc-prod-id').value;
+    const cant = parseFloat(f.querySelector('.nc-cantidad').value) || 0;
+    const precio = parseFloat(f.querySelector('.nc-precio').value) || 0;
+    if (prodId && cant > 0) {
+      items.push({ producto_id: parseInt(prodId), cantidad: cant, precio_unitario: precio });
+    }
+  });
+
+  if (!items.length) {
+    Swal.fire('Atención', 'Debe agregar al menos un ítem devuelto a la nota de crédito', 'warning');
+    return;
+  }
+
+  try {
+    const res = await API.post('/compras/notas-credito', {
+      compra_id: parseInt(compraId),
+      proveedor_id: parseInt(proveedorId),
+      numero_nota: document.getElementById('ncNumero').value,
+      timbrado: document.getElementById('ncTimbrado').value,
+      fecha_emision: document.getElementById('ncFecha').value,
+      motivo: document.getElementById('ncMotivo').value,
+      observaciones: document.getElementById('ncObservaciones').value,
+      items
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevaNotaCredito')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Nota de Crédito Registrada',
+        text: `Comprobante ${res.numeroNota} asentado. Se descontó el stock de insumos y se asentó en Kardex.`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Nota de Crédito',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          verComprobanteNotaCredito(res.notaId);
+        }
+      });
+      cargarNotasCreditoCompras();
+      await cargarGlobalMetadata();
+      await cargarProductos();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verComprobanteNotaCredito(id) {
+  try {
+    const res = await API.get(`/compras/notas-credito/${id}`);
+    if (!res.success) return;
+    const { nota, detalles } = res;
+
+    const html = `
+      <div class="border p-4 bg-white" style="font-family: monospace; font-size: 13px;">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+          <div>
+            <h5 class="fw-bold mb-0">${nota.proveedor_nombre}</h5>
+            <small class="text-muted">RUC: ${nota.proveedor_ruc} | Timbrado: ${nota.timbrado || '12345678'}</small><br>
+            <small class="text-muted">NOTA DE CRÉDITO COMERCIAL / FISCAL</small>
+          </div>
+          <div class="text-end">
+            <span class="badge bg-danger mb-1">NOTA DE CRÉDITO</span>
+            <div class="fw-bold fs-5 text-danger">${nota.numero_nota}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3 small">
+          <div class="col-7">
+            <strong>CLIENTE:</strong> PANADERÍA Y CONFITERÍA CAPIATÁ<br>
+            <strong>RUC:</strong> 80012345-6 | <strong>Dirección:</strong> Capiatá - Central<br>
+            <strong>Factura Afectada:</strong> FACT-${nota.factura_compra} (Fecha: ${nota.fecha_compra})
+          </div>
+          <div class="col-5 text-end">
+            <strong>Fecha Emisión:</strong> ${nota.fecha_emision}<br>
+            <strong>Motivo:</strong> ${nota.motivo.replace(/_/g, ' ').toUpperCase()}<br>
+            <strong>Operador:</strong> ${nota.usuario_nombre}
+          </div>
+        </div>
+
+        <table class="w-100 table table-sm table-bordered small mb-3">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Código</th>
+              <th>Descripción del Insumo</th>
+              <th class="text-end">Cantidad</th>
+              <th class="text-end">Precio Unitario</th>
+              <th class="text-end">Total Devolución (₲)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${detalles.map((d, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td><code>${d.producto_codigo}</code></td>
+                <td><strong>${d.producto_nombre}</strong></td>
+                <td class="text-end">${d.cantidad} ${d.unidad_simbolo || ''}</td>
+                <td class="text-end">${API.formatGs(d.precio_unitario)}</td>
+                <td class="text-end fw-bold text-danger">${API.formatGs(d.subtotal)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="table-light">
+              <th colspan="5" class="text-end">TOTAL NOTA DE CRÉDITO A FAVOR:</th>
+              <th class="text-end fs-6 text-danger">${API.formatGs(nota.total)}</th>
+            </tr>
+          </tfoot>
+        </table>
+
+        ${nota.observaciones ? `<div class="mb-3 small"><strong>Observaciones:</strong> ${nota.observaciones}</div>` : ''}
+
+        <div class="row text-center mt-5 pt-3">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y Sello Proveedor Emisor</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma Recepción Panadería Capiatá</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobanteNotaCreditoBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobanteNotaCredito'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar la nota de crédito', 'error');
   }
 }

@@ -498,6 +498,87 @@ const initDatabase = async () => {
       FOREIGN KEY (cobro_id) REFERENCES cobros(id) ON DELETE CASCADE,
       FOREIGN KEY (cuenta_cobrar_id) REFERENCES cuentas_cobrar(id)
     );
+
+    CREATE TABLE IF NOT EXISTS pedidos_compras (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_pedido TEXT UNIQUE NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_pedido DATE NOT NULL,
+      fecha_requerida DATE,
+      prioridad TEXT DEFAULT 'normal' CHECK(prioridad IN ('baja', 'normal', 'alta', 'urgente')),
+      estado TEXT DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'aprobado', 'rechazado', 'procesado')),
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS pedidos_compras_detalles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pedido_compra_id INTEGER NOT NULL,
+      producto_id INTEGER NOT NULL,
+      cantidad_solicitada REAL NOT NULL,
+      observaciones TEXT,
+      FOREIGN KEY (pedido_compra_id) REFERENCES pedidos_compras(id) ON DELETE CASCADE,
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ordenes_compras (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_orden TEXT UNIQUE NOT NULL,
+      pedido_compra_id INTEGER,
+      proveedor_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_orden DATE NOT NULL,
+      fecha_entrega_esperada DATE,
+      condicion_pago TEXT DEFAULT 'contado' CHECK(condicion_pago IN ('contado', 'credito_15', 'credito_30', 'credito_60')),
+      subtotal REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      estado TEXT DEFAULT 'emitida' CHECK(estado IN ('emitida', 'recibida', 'cancelada')),
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (pedido_compra_id) REFERENCES pedidos_compras(id),
+      FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ordenes_compras_detalles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orden_compra_id INTEGER NOT NULL,
+      producto_id INTEGER NOT NULL,
+      cantidad REAL NOT NULL,
+      precio_unitario REAL NOT NULL,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (orden_compra_id) REFERENCES ordenes_compras(id) ON DELETE CASCADE,
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS notas_credito_compras (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_nota TEXT NOT NULL,
+      timbrado TEXT,
+      compra_id INTEGER NOT NULL,
+      proveedor_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_emision DATE NOT NULL,
+      motivo TEXT NOT NULL CHECK(motivo IN ('devolucion_mercaderia', 'descuento_comercial', 'error_facturacion', 'otro')),
+      total REAL NOT NULL,
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (compra_id) REFERENCES compras(id),
+      FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS notas_credito_compras_detalles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nota_credito_id INTEGER NOT NULL,
+      producto_id INTEGER NOT NULL,
+      cantidad REAL NOT NULL,
+      precio_unitario REAL NOT NULL,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (nota_credito_id) REFERENCES notas_credito_compras(id) ON DELETE CASCADE,
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    );
   `);
 
   // Migraciones seguras para ventas
@@ -508,6 +589,16 @@ const initDatabase = async () => {
   }
   if (!colNames.includes('condicion_venta')) {
     await exec("ALTER TABLE ventas ADD COLUMN condicion_venta TEXT DEFAULT 'contado';");
+  }
+
+  // Migraciones seguras para compras
+  const colInfoCompras = await all('PRAGMA table_info(compras)');
+  const colNamesCompras = colInfoCompras.map(c => c.name);
+  if (!colNamesCompras.includes('orden_compra_id')) {
+    await exec('ALTER TABLE compras ADD COLUMN orden_compra_id INTEGER REFERENCES ordenes_compras(id);');
+  }
+  if (!colNamesCompras.includes('timbrado')) {
+    await exec("ALTER TABLE compras ADD COLUMN timbrado TEXT DEFAULT '12345678';");
   }
 
   // Asegurar existencia de caja inicial por defecto
