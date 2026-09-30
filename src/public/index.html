@@ -105,6 +105,9 @@
         <a class="nav-link" data-view="creditos" onclick="navigate('creditos')">
           <i class="fa-solid fa-hand-holding-dollar"></i> <span>Cuentas a Cobrar</span>
         </a>
+        <a class="nav-link" data-view="servicios" onclick="navigate('servicios')">
+          <i class="fa-solid fa-bell-concierge"></i> <span>Presupuestos & Servicios</span>
+        </a>
         <a class="nav-link" data-view="ventas-historial" onclick="navigate('ventas-historial')">
           <i class="fa-solid fa-receipt"></i> <span>Historial de Ventas</span>
         </a>
@@ -882,6 +885,202 @@
                   <!-- Llenado dinámico -->
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SERVICIOS Y PRESUPUESTOS VIEW -->
+        <section id="view-servicios" class="app-view d-none">
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <small class="text-muted fw-semibold">Presupuestos Emitidos</small>
+                    <h4 class="fw-bold mb-0 text-primary" id="kpiPresupuestosPendientes">0</h4>
+                  </div>
+                  <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+                    <i class="fa-solid fa-file-lines fa-lg"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <small class="text-muted fw-semibold">Presupuestos Aprobados</small>
+                    <h4 class="fw-bold mb-0 text-success" id="kpiPresupuestosAprobados">0</h4>
+                  </div>
+                  <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+                    <i class="fa-solid fa-file-circle-check fa-lg"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <small class="text-muted fw-semibold">Eventos Agendados</small>
+                    <h4 class="fw-bold mb-0 text-warning" id="kpiEventosProgramados">0</h4>
+                  </div>
+                  <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning">
+                    <i class="fa-solid fa-calendar-check fa-lg"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <small class="text-muted fw-semibold">Saldos por Cobrar Eventos</small>
+                    <h4 class="fw-bold mb-0 text-danger" id="kpiSaldoEventos">0 ₲</h4>
+                  </div>
+                  <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger">
+                    <i class="fa-solid fa-hand-holding-dollar fa-lg"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+              <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                <div>
+                  <h5 class="mb-0 fw-bold">Módulo de Servicios Especiales, Catering y Presupuestos</h5>
+                  <small class="text-muted">Cotizaciones a Clientes &rarr; Contratos y Hojas de Pedido de Servicios/Eventos &rarr; Catálogo</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-primary btn-sm" onclick="abrirModalNuevoCatalogoServicio()">
+                    <i class="fa-solid fa-plus me-1"></i> Nuevo Servicio al Catálogo
+                  </button>
+                  <button class="btn btn-primary btn-sm fw-semibold" onclick="abrirModalNuevoPresupuesto()">
+                    <i class="fa-solid fa-file-invoice me-1"></i> Emitir Presupuesto
+                  </button>
+                </div>
+              </div>
+
+              <!-- Pestañas del Módulo Servicios -->
+              <ul class="nav nav-tabs card-header-tabs" id="serviciosTabs" role="tablist">
+                <li class="nav-item">
+                  <button class="nav-link active fw-semibold" id="tab-servicios-presupuestos-btn" data-bs-toggle="tab" data-bs-target="#tab-servicios-presupuestos" type="button" onclick="cargarPresupuestos()">
+                    <i class="fa-solid fa-calculator me-1 text-primary"></i> Presupuestos & Cotizaciones
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link fw-semibold" id="tab-servicios-pedidos-btn" data-bs-toggle="tab" data-bs-target="#tab-servicios-pedidos" type="button" onclick="cargarPedidosServicios()">
+                    <i class="fa-solid fa-cake-candles me-1 text-warning"></i> Pedidos de Servicios / Eventos
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link fw-semibold" id="tab-servicios-catalogo-btn" data-bs-toggle="tab" data-bs-target="#tab-servicios-catalogo" type="button" onclick="cargarCatalogoServicios()">
+                    <i class="fa-solid fa-list-check me-1 text-success"></i> Catálogo de Servicios
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card-body p-0">
+              <div class="tab-content" id="serviciosTabsContent">
+                <!-- TAB 1: PRESUPUESTOS -->
+                <div class="tab-pane fade show active p-3" id="tab-servicios-presupuestos">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0 fw-bold">Cotizaciones y Presupuestos Emitidos a Clientes</h6>
+                    <div class="d-flex gap-2">
+                      <select id="filtroPresupuestoEstado" class="form-select form-select-sm" style="width: 170px;" onchange="cargarPresupuestos()">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente" selected>Solo Pendientes</option>
+                        <option value="aprobado">Aprobados</option>
+                        <option value="rechazado">Rechazados</option>
+                        <option value="vencido">Vencidos</option>
+                      </select>
+                      <button class="btn btn-primary text-white btn-sm fw-semibold" onclick="abrirModalNuevoPresupuesto()">
+                        <i class="fa-solid fa-plus me-1"></i> Nuevo Presupuesto
+                      </button>
+                    </div>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Nº Presupuesto</th>
+                          <th>Fecha Emisión</th>
+                          <th>Validez Hasta</th>
+                          <th>Cliente / RUC</th>
+                          <th>Responsable</th>
+                          <th class="text-end">Total Presupuesto (₲)</th>
+                          <th>Estado</th>
+                          <th class="text-end">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tablaPresupuestos">
+                        <!-- Llenado dinámico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- TAB 2: PEDIDOS DE SERVICIOS / EVENTOS -->
+                <div class="tab-pane fade p-3" id="tab-servicios-pedidos">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0 fw-bold">Eventos, Catering y Pedidos Confirmados por Encargo</h6>
+                    <button class="btn btn-warning text-white btn-sm fw-semibold" onclick="abrirModalNuevoPedidoServicio()" style="background-color: #d97706; border-color: #d97706;">
+                      <i class="fa-solid fa-calendar-plus me-1"></i> Agendar Evento / Servicio
+                    </button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Nº Servicio</th>
+                          <th>Fecha Evento</th>
+                          <th>Hora</th>
+                          <th>Lugar / Ubicación</th>
+                          <th>Cliente</th>
+                          <th class="text-end">Total (₲)</th>
+                          <th class="text-end">Seña (₲)</th>
+                          <th class="text-end">Saldo Pendiente (₲)</th>
+                          <th>Estado</th>
+                          <th class="text-end">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tablaPedidosServicios">
+                        <!-- Llenado dinámico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- TAB 3: CATÁLOGO DE SERVICIOS -->
+                <div class="tab-pane fade p-3" id="tab-servicios-catalogo">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0 fw-bold">Catálogo de Servicios y Opciones Especiales para Clientes</h6>
+                    <button class="btn btn-success text-white btn-sm fw-semibold" onclick="abrirModalNuevoCatalogoServicio()">
+                      <i class="fa-solid fa-plus me-1"></i> Añadir Servicio
+                    </button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Código</th>
+                          <th>Nombre del Servicio</th>
+                          <th>Unidad</th>
+                          <th class="text-end">Precio Sugerido (₲)</th>
+                          <th>Descripción</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tablaCatalogoServicios">
+                        <!-- Llenado dinámico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -2305,6 +2504,226 @@
             <i class="fa-solid fa-print me-1"></i> Imprimir Nota de Crédito
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO PRESUPUESTO / COTIZACIÓN -->
+  <div class="modal fade" id="modalNuevoPresupuesto" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Emitir Nuevo Presupuesto / Cotización</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoPresupuesto" onsubmit="guardarNuevoPresupuesto(event)">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-5">
+                <label class="form-label small fw-semibold">Cliente Solicitante *</label>
+                <div class="input-group">
+                  <select id="presupuestoClienteId" class="form-select" required>
+                    <!-- Llenado dinámico -->
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" onclick="abrirModalNuevoCliente()" title="Nuevo Cliente">
+                    <i class="fa-solid fa-user-plus"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Fecha Emisión *</label>
+                <input type="date" id="presupuestoFechaEmision" class="form-control" required>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Validez (Días) *</label>
+                <input type="number" id="presupuestoDiasValidez" class="form-control" value="15" min="1" required>
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold">Descuento Global (₲)</label>
+                <input type="number" id="presupuestoDescuento" class="form-control" value="0" min="0" oninput="calcularTotalPresupuestoModal()">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Observaciones / Especificaciones del Evento o Servicio</label>
+                <input type="text" id="presupuestoObservaciones" class="form-control" placeholder="Ej: Cumpleaños 15 años, montaje a las 18:00 hs, vajilla dorada...">
+              </div>
+            </div>
+
+            <!-- Tabla de Ítems Cotizados -->
+            <div class="border rounded p-3 mb-3 bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold">Ítems, Servicios y Productos Cotizados</h6>
+                <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="agregarFilaPresupuesto()">
+                  <i class="fa-solid fa-plus me-1"></i> Añadir Ítem
+                </button>
+              </div>
+              <div id="contenedorItemsPresupuesto">
+                <!-- Filas dinámicas -->
+              </div>
+              <div class="d-flex justify-content-end gap-4 fw-bold fs-6 mt-3 border-top pt-2">
+                <div>Subtotal: <span id="presupuestoSubtotalTxt">0 ₲</span></div>
+                <div>Descuento: <span id="presupuestoDescuentoTxt" class="text-danger">0 ₲</span></div>
+                <div class="text-primary fs-5">Total Presupuestado: <span id="presupuestoTotalTxt">0 ₲</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Emitir Presupuesto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COMPROBANTE DE PRESUPUESTO / COTIZACIÓN -->
+  <div class="modal fade" id="modalComprobantePresupuesto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Presupuesto / Cotización Oficial</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modalComprobantePresupuestoBody">
+          <!-- Printable layout -->
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> Imprimir Cotización
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AGENDAR PEDIDO DE SERVICIO / EVENTO -->
+  <div class="modal fade" id="modalNuevoPedidoServicio" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Agendar Pedido de Servicio / Evento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoPedidoServicio" onsubmit="guardarNuevoPedidoServicio(event)">
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold">Asociar a Presupuesto (Opcional)</label>
+                <select id="pedidoServicioPresupuestoId" class="form-select" onchange="seleccionarPresupuestoParaPedido()">
+                  <option value="">-- Contrato Directo (Sin Presupuesto previo) --</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold">Cliente *</label>
+                <select id="pedidoServicioClienteId" class="form-select" required>
+                  <!-- Llenado dinámico -->
+                </select>
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small fw-semibold">Fecha del Evento *</label>
+                <input type="date" id="pedidoServicioFechaEvento" class="form-control" required>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold">Hora de Inicio *</label>
+                <input type="time" id="pedidoServicioHoraEvento" class="form-control" value="19:00" required>
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label small fw-semibold">Lugar / Salón / Dirección del Evento *</label>
+                <input type="text" id="pedidoServicioLugarEvento" class="form-control" required placeholder="Ej: Salón Las Palmeras, Capiatá Ruta 2">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Total del Contrato (₲) *</label>
+                <input type="number" id="pedidoServicioTotal" class="form-control" required min="1" oninput="calcularSaldoPedidoServicio()">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Seña / Anticipo Pagado (₲)</label>
+                <input type="number" id="pedidoServicioSenia" class="form-control" value="0" min="0" oninput="calcularSaldoPedidoServicio()">
+                <small class="text-muted" style="font-size:0.75rem;">Ingresa a la caja activa si está abierta</small>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Saldo Pendiente al Evento (₲)</label>
+                <input type="text" id="pedidoServicioSaldo" class="form-control fw-bold text-danger bg-light" readonly value="0 ₲">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Detalles del Montaje, Menú o Personal Requerido</label>
+                <textarea id="pedidoServicioObservaciones" class="form-control" rows="3" placeholder="Detalle de bocaditos, torta con temática, horario de llegada del equipo..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-white fw-bold" style="background-color: #d97706;">Agendar Evento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HOJA DE SERVICIO Y CONTRATO DE EVENTO -->
+  <div class="modal fade" id="modalComprobantePedidoServicio" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Orden de Servicio & Contrato de Evento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modalComprobantePedidoServicioBody">
+          <!-- Printable layout -->
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-warning text-white" onclick="window.print()" style="background-color: #d97706;">
+            <i class="fa-solid fa-print me-1"></i> Imprimir Orden y Contrato
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO SERVICIO EN CATÁLOGO -->
+  <div class="modal fade" id="modalNuevoCatalogoServicio" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Servicio en Catálogo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formNuevoCatalogoServicio" onsubmit="guardarNuevoCatalogoServicio(event)">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Código del Servicio *</label>
+              <input type="text" id="catServicioCodigo" class="form-control" required placeholder="Ej: SRV-006">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nombre del Servicio *</label>
+              <input type="text" id="catServicioNombre" class="form-control" required placeholder="Ej: Mesa de Quesos y Panes Rústicos">
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Unidad de Medida *</label>
+                <select id="catServicioUnidad" class="form-select">
+                  <option value="servicio">Por Servicio</option>
+                  <option value="persona">Por Persona / Plato</option>
+                  <option value="hora">Por Hora</option>
+                  <option value="evento">Por Evento</option>
+                  <option value="paquete">Por Paquete</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Precio Sugerido (₲) *</label>
+                <input type="number" id="catServicioPrecio" class="form-control" required min="0" placeholder="150000">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Descripción Detallada</label>
+              <textarea id="catServicioDescripcion" class="form-control" rows="2" placeholder="Qué incluye el servicio, personal, traslados..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar Servicio</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

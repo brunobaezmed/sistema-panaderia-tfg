@@ -99,7 +99,7 @@
 
   <div class="header">
     <div>
-      <h1>Diagrama Entidad-Relación (DER) - 34 Tablas</h1>
+      <h1>Diagrama Entidad-Relación (DER) - 38 Tablas</h1>
       <p>Sistema de Gestión para Panadería y Confitería | Tesis UNIGRAN - Bruno Báez</p>
     </div>
     <div class="toolbar">
@@ -388,6 +388,46 @@ erDiagram
         decimal subtotal
     }
 
+    SERVICIOS {
+        int id PK
+        string codigo
+        string nombre
+        decimal precio_sugerido
+        string unidad_servicio
+    }
+
+    PRESUPUESTOS {
+        int id PK
+        string numero_presupuesto
+        int cliente_id FK
+        int usuario_id FK
+        date fecha_emision
+        decimal total
+        string estado
+    }
+
+    PRESUPUESTOS_DETALLES {
+        int id PK
+        int presupuesto_id FK
+        string tipo_item
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    PEDIDOS_SERVICIOS {
+        int id PK
+        string numero_servicio
+        int presupuesto_id FK
+        int cliente_id FK
+        date fecha_evento
+        string lugar_evento
+        decimal total
+        decimal senia_pagada
+        decimal saldo_pendiente
+        string estado
+    }
+
     USUARIOS ||--o{ AUDITORIA_LOGS : "registra"
     CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
     UNIDADES_MEDIDA ||--o{ PRODUCTOS : "mide"
@@ -424,6 +464,13 @@ erDiagram
     COMPRAS ||--|{ COMPRAS_DETALLES : "lineas"
     COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "ajuste"
     NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "devolucion"
+
+    CLIENTES ||--o{ PRESUPUESTOS : "solicita"
+    USUARIOS ||--o{ PRESUPUESTOS : "cotiza"
+    PRESUPUESTOS ||--|{ PRESUPUESTOS_DETALLES : "renglones"
+    SERVICIOS ||--o{ PRESUPUESTOS_DETALLES : "incluye"
+    PRESUPUESTOS ||--o{ PEDIDOS_SERVICIOS : "contrata"
+    CLIENTES ||--o{ PEDIDOS_SERVICIOS : "acuerda"
     </div>
   </div>
 
@@ -457,7 +504,7 @@ erDiagram
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "Diagrama_Entidad_Relacion_Panaderia_34Tablas.svg";
+      a.download = "Diagrama_Entidad_Relacion_Panaderia_38Tablas.svg";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

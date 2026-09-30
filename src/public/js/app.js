@@ -152,6 +152,7 @@ function navigate(viewName) {
     'pos': 'Punto de Venta (POS Mostrador)',
     'caja': 'Gestión de Caja y Turnos',
     'creditos': 'Cartera de Cuentas por Cobrar',
+    'servicios': 'Presupuestos y Servicios de Eventos',
     'ventas-historial': 'Historial de Ventas y Facturación',
     'compras': 'Gestión de Compras y Proveedores',
     'depositos': 'Depósitos y Transferencias Internas',
@@ -184,6 +185,9 @@ function navigate(viewName) {
       break;
     case 'creditos':
       cargarCreditos();
+      break;
+    case 'servicios':
+      cargarServiciosView();
       break;
     case 'ventas-historial':
       cargarHistorialVentas();
@@ -3846,3 +3850,829 @@ async function verComprobanteNotaCredito(id) {
     Swal.fire('Error', 'No se pudo cargar la nota de crédito', 'error');
   }
 }
+
+// --------------------------------------------------------------------------
+// 15. MÓDULO SERVICIOS, PRESUPUESTOS Y EVENTOS
+// --------------------------------------------------------------------------
+let catalogoServiciosGlobal = [];
+let presupuestosGlobal = [];
+let clientesGlobal = [];
+
+async function cargarServiciosView() {
+  await Promise.all([
+    cargarClientesGlobal(),
+    cargarCatalogoServicios(),
+    cargarPresupuestos(),
+    cargarPedidosServicios()
+  ]);
+  actualizarKPIsServicios();
+}
+
+async function cargarClientesGlobal() {
+  try {
+    const res = await API.get('/ventas/clientes');
+    if (res.success && res.clientes) {
+      clientesGlobal = res.clientes;
+    }
+  } catch (err) {
+    console.error('Error cargando clientes:', err);
+  }
+}
+
+async function actualizarKPIsServicios() {
+  try {
+    const [resPres, resPed] = await Promise.all([
+      API.get('/servicios/presupuestos'),
+      API.get('/servicios/pedidos')
+    ]);
+
+    const presupuestos = resPres.success ? resPres.presupuestos : [];
+    const pedidos = resPed.success ? resPed.pedidos : [];
+
+    const totalPendientes = presupuestos.filter(p => p.estado === 'pendiente').length;
+    const totalAprobados = presupuestos.filter(p => p.estado === 'aprobado').length;
+    const eventosProgramados = pedidos.filter(p => ['programado', 'en_preparacion'].includes(p.estado)).length;
+    const saldoEventos = pedidos
+      .filter(p => p.estado !== 'cancelado')
+      .reduce((sum, p) => sum + (Number(p.saldo_pendiente) || 0), 0);
+
+    const elPend = document.getElementById('kpiPresupuestosPendientes');
+    const elAprob = document.getElementById('kpiPresupuestosAprobados');
+    const elProg = document.getElementById('kpiEventosProgramados');
+    const elSaldo = document.getElementById('kpiSaldoEventos');
+
+    if (elPend) elPend.textContent = totalPendientes;
+    if (elAprob) elAprob.textContent = totalAprobados;
+    if (elProg) elProg.textContent = eventosProgramados;
+    if (elSaldo) elSaldo.textContent = API.formatGs(saldoEventos);
+  } catch (err) {
+    console.error('Error actualizando KPIs de servicios:', err);
+  }
+}
+
+// --- 15.1 PRESUPUESTOS & COTIZACIONES ---
+async function cargarPresupuestos() {
+  try {
+    const filtro = document.getElementById('filtroPresupuestoEstado')?.value || '';
+    const res = await API.get('/servicios/presupuestos', { estado: filtro });
+    if (!res.success) return;
+
+    presupuestosGlobal = res.presupuestos || [];
+    const tbody = document.getElementById('tablaPresupuestos');
+    if (!tbody) return;
+
+    if (presupuestosGlobal.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><i class="fa-solid fa-calculator me-1"></i> No hay presupuestos emitidos en este estado</td></tr>';
+      return;
+    }
+
+    const badgeEstados = {
+      'pendiente': 'bg-warning text-dark',
+      'aprobado': 'bg-success text-white',
+      'rechazado': 'bg-danger text-white',
+      'vencido': 'bg-secondary text-white',
+      'facturado': 'bg-info text-dark'
+    };
+
+    tbody.innerHTML = presupuestosGlobal.map(p => `
+      <tr>
+        <td><strong><code>${p.numero_presupuesto}</code></strong></td>
+        <td>${API.formatFecha(p.fecha_emision)}</td>
+        <td>${API.formatFecha(p.fecha_vencimiento)}</td>
+        <td>
+          <div class="fw-semibold text-dark">${p.cliente_nombre}</div>
+          <small class="text-muted">RUC/CI: ${p.cliente_ruc} | Tel: ${p.cliente_telefono || '-'}</small>
+        </td>
+        <td><small class="text-muted">${p.usuario_nombre}</small></td>
+        <td class="text-end fw-bold text-primary">${API.formatGs(p.total)}</td>
+        <td><span class="badge ${badgeEstados[p.estado] || 'bg-secondary'} text-capitalize">${p.estado}</span></td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="verComprobantePresupuesto(${p.id})" title="Imprimir Cotización">
+              <i class="fa-solid fa-print"></i>
+            </button>
+            ${p.estado === 'pendiente' ? `
+              <button class="btn btn-outline-success" onclick="aprobarYGenerarPedidoServicio(${p.id})" title="Aprobar y Agendar Evento">
+                <i class="fa-solid fa-calendar-check"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="cambiarEstadoPresupuesto(${p.id}, 'rechazado')" title="Rechazar">
+                <i class="fa-solid fa-ban"></i>
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error cargando presupuestos:', err);
+  }
+}
+
+async function abrirModalNuevoPresupuesto() {
+  document.getElementById('formNuevoPresupuesto').reset();
+  document.getElementById('presupuestoFechaEmision').value = new Date().toISOString().split('T')[0];
+  document.getElementById('presupuestoDiasValidez').value = 15;
+  document.getElementById('presupuestoDescuento').value = 0;
+  document.getElementById('presupuestoObservaciones').value = '';
+  document.getElementById('contenedorItemsPresupuesto').innerHTML = '';
+
+  // Cargar clientes
+  if (!clientesGlobal.length) await cargarClientesGlobal();
+  const selectCli = document.getElementById('presupuestoClienteId');
+  selectCli.innerHTML = '<option value="">-- Seleccionar Cliente --</option>' + clientesGlobal.map(c => `
+    <option value="${c.id}">${c.nombre_razon} (RUC: ${c.ruc_ci})</option>
+  `).join('');
+
+  // Asegurar que tengamos el catálogo de servicios
+  if (!catalogoServiciosGlobal.length) await cargarCatalogoServicios();
+
+  agregarFilaPresupuesto();
+  calcularTotalPresupuestoModal();
+
+  const modal = new bootstrap.Modal(document.getElementById('modalNuevoPresupuesto'));
+  modal.show();
+}
+
+function agregarFilaPresupuesto(tipoItem = 'servicio', idItem = '', cantidad = 1, precioUnitario = 0, descripcion = '') {
+  const cont = document.getElementById('contenedorItemsPresupuesto');
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 fila-item-presupuesto border-bottom pb-2';
+
+  div.innerHTML = `
+    <div class="col-12 col-md-2">
+      <select class="form-select form-select-sm pre-tipo-item" onchange="cambiarTipoItemPresupuesto(this)">
+        <option value="servicio" ${tipoItem === 'servicio' ? 'selected' : ''}>Servicio Especial</option>
+        <option value="producto" ${tipoItem === 'producto' ? 'selected' : ''}>Producto Panadería</option>
+        <option value="libre" ${tipoItem === 'libre' ? 'selected' : ''}>Ítem Personalizado</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-4 contenedor-selector-item">
+      <!-- Selector dinámico según tipo -->
+    </div>
+    <div class="col-4 col-md-2">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">Cant.</span>
+        <input type="number" class="form-control form-control-sm pre-cantidad" min="0.1" step="0.1" value="${cantidad}" required oninput="calcularTotalPresupuestoModal()">
+      </div>
+    </div>
+    <div class="col-4 col-md-2">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">₲</span>
+        <input type="number" class="form-control form-control-sm pre-precio" min="0" step="500" value="${precioUnitario}" required oninput="calcularTotalPresupuestoModal()">
+      </div>
+    </div>
+    <div class="col-4 col-md-2 text-end d-flex align-items-center justify-content-end gap-1">
+      <span class="small fw-bold pre-subtotal-txt text-primary">0 ₲</span>
+      <button type="button" class="btn btn-sm btn-outline-danger py-0 border-0 ms-1" onclick="this.closest('.fila-item-presupuesto').remove(); calcularTotalPresupuestoModal();">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `;
+
+  cont.appendChild(div);
+  renderizarSelectorItemPresupuesto(div, tipoItem, idItem, descripcion, precioUnitario);
+  calcularTotalPresupuestoModal();
+}
+
+function cambiarTipoItemPresupuesto(selectElem) {
+  const fila = selectElem.closest('.fila-item-presupuesto');
+  const tipo = selectElem.value;
+  renderizarSelectorItemPresupuesto(fila, tipo, '', '', 0);
+  calcularTotalPresupuestoModal();
+}
+
+function renderizarSelectorItemPresupuesto(fila, tipo, idItem, descripcion, precio) {
+  const contenedor = fila.querySelector('.contenedor-selector-item');
+  const prods = productosGlobal.filter(p => p.tipo === 'producto_terminado');
+
+  if (tipo === 'servicio') {
+    contenedor.innerHTML = `
+      <select class="form-select form-select-sm pre-item-select" onchange="actualizarPrecioItemPresupuesto(this, 'servicio')">
+        <option value="">-- Seleccionar Servicio --</option>
+        ${catalogoServiciosGlobal.map(s => `
+          <option value="${s.id}" data-precio="${s.precio_sugerido || 0}" data-nombre="${s.nombre}" ${s.id == idItem ? 'selected' : ''}>
+            ${s.nombre} (${s.codigo} - ${s.unidad_servicio})
+          </option>
+        `).join('')}
+      </select>
+    `;
+  } else if (tipo === 'producto') {
+    contenedor.innerHTML = `
+      <select class="form-select form-select-sm pre-item-select" onchange="actualizarPrecioItemPresupuesto(this, 'producto')">
+        <option value="">-- Seleccionar Producto --</option>
+        ${prods.map(p => `
+          <option value="${p.id}" data-precio="${p.precio_venta || 0}" data-nombre="${p.nombre}" ${p.id == idItem ? 'selected' : ''}>
+            ${p.nombre} (${p.codigo})
+          </option>
+        `).join('')}
+      </select>
+    `;
+  } else {
+    contenedor.innerHTML = `
+      <input type="text" class="form-control form-control-sm pre-descripcion-libre" placeholder="Descripción personalizada del servicio..." value="${descripcion || ''}">
+    `;
+  }
+
+  if (precio > 0) {
+    fila.querySelector('.pre-precio').value = precio;
+  }
+}
+
+function actualizarPrecioItemPresupuesto(selectElem, tipo) {
+  const selected = selectElem.options[selectElem.selectedIndex];
+  const precio = selected ? parseFloat(selected.getAttribute('data-precio') || 0) : 0;
+  const fila = selectElem.closest('.fila-item-presupuesto');
+  fila.querySelector('.pre-precio').value = precio;
+  calcularTotalPresupuestoModal();
+}
+
+function calcularTotalPresupuestoModal() {
+  const filas = document.querySelectorAll('.fila-item-presupuesto');
+  let subtotal = 0;
+
+  filas.forEach(f => {
+    const cant = parseFloat(f.querySelector('.pre-cantidad')?.value) || 0;
+    const precio = parseFloat(f.querySelector('.pre-precio')?.value) || 0;
+    const sub = cant * precio;
+    subtotal += sub;
+    const subtxt = f.querySelector('.pre-subtotal-txt');
+    if (subtxt) subtxt.textContent = API.formatGs(sub);
+  });
+
+  const desc = parseFloat(document.getElementById('presupuestoDescuento')?.value) || 0;
+  const total = Math.max(0, subtotal - desc);
+
+  const subTxtElem = document.getElementById('presupuestoSubtotalTxt');
+  const descTxtElem = document.getElementById('presupuestoDescuentoTxt');
+  const totalTxtElem = document.getElementById('presupuestoTotalTxt');
+
+  if (subTxtElem) subTxtElem.textContent = API.formatGs(subtotal);
+  if (descTxtElem) descTxtElem.textContent = API.formatGs(desc);
+  if (totalTxtElem) totalTxtElem.textContent = API.formatGs(total);
+}
+
+async function guardarNuevoPresupuesto(e) {
+  e.preventDefault();
+  const clienteId = document.getElementById('presupuestoClienteId').value;
+  const filas = document.querySelectorAll('.fila-item-presupuesto');
+  const items = [];
+
+  filas.forEach(f => {
+    const tipo = f.querySelector('.pre-tipo-item').value;
+    const cant = parseFloat(f.querySelector('.pre-cantidad').value) || 0;
+    const precio = parseFloat(f.querySelector('.pre-precio').value) || 0;
+
+    let productoId = null;
+    let servicioId = null;
+    let descripcion = '';
+
+    if (tipo === 'servicio') {
+      const sel = f.querySelector('.pre-item-select');
+      servicioId = sel.value ? parseInt(sel.value) : null;
+      descripcion = sel.options[sel.selectedIndex]?.getAttribute('data-nombre') || 'Servicio Especial';
+    } else if (tipo === 'producto') {
+      const sel = f.querySelector('.pre-item-select');
+      productoId = sel.value ? parseInt(sel.value) : null;
+      descripcion = sel.options[sel.selectedIndex]?.getAttribute('data-nombre') || 'Producto de Panadería';
+    } else {
+      descripcion = f.querySelector('.pre-descripcion-libre')?.value || 'Servicio personalizado';
+    }
+
+    if (cant > 0 && precio >= 0 && descripcion) {
+      items.push({
+        tipo_item: tipo,
+        producto_id: productoId,
+        servicio_id: servicioId,
+        descripcion,
+        cantidad: cant,
+        precio_unitario: precio
+      });
+    }
+  });
+
+  if (!items.length) {
+    Swal.fire('Atención', 'Debe agregar al menos un ítem cotizado', 'warning');
+    return;
+  }
+
+  try {
+    const res = await API.post('/servicios/presupuestos', {
+      cliente_id: parseInt(clienteId),
+      fecha_emision: document.getElementById('presupuestoFechaEmision').value,
+      dias_validez: parseInt(document.getElementById('presupuestoDiasValidez').value) || 15,
+      descuento: parseFloat(document.getElementById('presupuestoDescuento').value) || 0,
+      observaciones: document.getElementById('presupuestoObservaciones').value,
+      items
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevoPresupuesto')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Presupuesto Emitido',
+        text: `Presupuesto ${res.numeroPresupuesto} generado por un total de ${API.formatGs(res.total)}.`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Cotización',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          verComprobantePresupuesto(res.presupuestoId);
+        }
+      });
+      cargarPresupuestos();
+      actualizarKPIsServicios();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verComprobantePresupuesto(id) {
+  try {
+    const res = await API.get(`/servicios/presupuestos/${id}`);
+    if (!res.success) return;
+    const { presupuesto: p, detalles } = res;
+
+    const html = `
+      <div class="ticket-print p-4 bg-white text-dark" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #ddd; border-radius: 8px;">
+        <div class="row align-items-center mb-4 border-bottom pb-3">
+          <div class="col-8">
+            <h4 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-bread-slice me-2 text-warning"></i>PANADERÍA CAPIATÁ</h4>
+            <div class="small text-muted">Elaboración Artesanal & Servicios de Catering para Eventos</div>
+            <div class="small text-muted">Ruta 2 Km 20 - Capiatá, Paraguay | Tel: (0228) 634-000</div>
+            <div class="small text-muted">RUC: 80099887-4</div>
+          </div>
+          <div class="col-4 text-end">
+            <span class="badge bg-primary fs-6 px-3 py-2 mb-1">PRESUPUESTO</span>
+            <h5 class="fw-bold text-dark mb-0 font-monospace">${p.numero_presupuesto}</h5>
+            <small class="text-muted d-block">Estado: <strong class="text-uppercase">${p.estado}</strong></small>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4 bg-light p-3 rounded">
+          <div class="col-6">
+            <small class="text-muted text-uppercase fw-bold">Cliente Cotizado:</small>
+            <div class="fw-bold fs-6 text-dark">${p.cliente_nombre}</div>
+            <div class="small text-muted">RUC / CI: ${p.cliente_ruc}</div>
+            <div class="small text-muted">Teléfono: ${p.cliente_telefono || '-'}</div>
+            <div class="small text-muted">Dirección: ${p.cliente_direccion || 'Capiatá'}</div>
+          </div>
+          <div class="col-6 text-end">
+            <small class="text-muted text-uppercase fw-bold">Detalles de Validez:</small>
+            <div class="small"><strong>Fecha Emisión:</strong> ${API.formatFecha(p.fecha_emision)}</div>
+            <div class="small text-danger"><strong>Válido Hasta:</strong> ${API.formatFecha(p.fecha_vencimiento)}</div>
+            <div class="small"><strong>Elaborado por:</strong> ${p.usuario_nombre}</div>
+          </div>
+        </div>
+
+        <div class="table-responsive mb-4">
+          <table class="table table-bordered table-sm align-middle small">
+            <thead class="table-light text-uppercase">
+              <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 15%;">Tipo</th>
+                <th style="width: 45%;">Descripción del Ítem / Servicio</th>
+                <th style="width: 10%;" class="text-end">Cant.</th>
+                <th style="width: 12%;" class="text-end">Precio Unit.</th>
+                <th style="width: 13%;" class="text-end">Subtotal (₲)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${detalles.map((d, idx) => `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td><span class="badge bg-secondary-subtle text-dark text-capitalize">${d.tipo_item}</span></td>
+                  <td><strong>${d.descripcion}</strong></td>
+                  <td class="text-end font-monospace">${d.cantidad}</td>
+                  <td class="text-end font-monospace">${API.formatGs(d.precio_unitario)}</td>
+                  <td class="text-end font-monospace fw-bold">${API.formatGs(d.subtotal)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-end">Subtotal:</th>
+                <th class="text-end font-monospace">${API.formatGs(p.subtotal)}</th>
+              </tr>
+              ${p.descuento > 0 ? `
+                <tr>
+                  <th colspan="5" class="text-end text-danger">Descuento Especial:</th>
+                  <th class="text-end font-monospace text-danger">- ${API.formatGs(p.descuento)}</th>
+                </tr>
+              ` : ''}
+              <tr class="table-primary">
+                <th colspan="5" class="text-end fs-6">TOTAL PRESUPUESTADO:</th>
+                <th class="text-end fs-6 font-monospace fw-bold text-primary">${API.formatGs(p.total)}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        ${p.observaciones ? `
+          <div class="border rounded p-2 mb-4 bg-light small">
+            <strong>Especificaciones del Evento / Observaciones:</strong> ${p.observaciones}
+          </div>
+        ` : ''}
+
+        <div class="alert alert-info py-2 small mb-4">
+          <i class="fa-solid fa-circle-info me-1"></i> Este presupuesto tiene validez legal hasta la fecha indicada. Para confirmar el servicio y agendar la fecha del evento, se requiere la entrega de al menos un 30% en concepto de seña.
+        </div>
+
+        <div class="row text-center mt-5 pt-3">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y Sello Panadería Capiatá</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y Aclaración de Conformidad Cliente</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobantePresupuestoBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobantePresupuesto'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar el comprobante del presupuesto', 'error');
+  }
+}
+
+async function cambiarEstadoPresupuesto(id, estado) {
+  const result = await Swal.fire({
+    title: `¿Cambiar a ${estado}?`,
+    text: `El presupuesto #${id} cambiará su estado a ${estado}.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, cambiar',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const res = await API.put(`/servicios/presupuestos/${id}/estado`, { estado });
+    if (res.success) {
+      Swal.fire('Actualizado', res.message, 'success');
+      cargarPresupuestos();
+      actualizarKPIsServicios();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+// --- 15.2 PEDIDOS DE SERVICIOS / EVENTOS ---
+async function cargarPedidosServicios() {
+  try {
+    const res = await API.get('/servicios/pedidos');
+    if (!res.success) return;
+
+    const pedidos = res.pedidos || [];
+    const tbody = document.getElementById('tablaPedidosServicios');
+    if (!tbody) return;
+
+    if (pedidos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-cake-candles me-1"></i> No hay pedidos de eventos agendados</td></tr>';
+      return;
+    }
+
+    const badgeEstados = {
+      'programado': 'bg-primary text-white',
+      'en_preparacion': 'bg-warning text-dark',
+      'entregado': 'bg-info text-dark',
+      'finalizado': 'bg-success text-white',
+      'cancelado': 'bg-danger text-white'
+    };
+
+    tbody.innerHTML = pedidos.map(ps => `
+      <tr>
+        <td><strong><code>${ps.numero_servicio}</code></strong></td>
+        <td class="fw-bold">${API.formatFecha(ps.fecha_evento)}</td>
+        <td><span class="badge bg-light text-dark border">${ps.hora_evento} hs</span></td>
+        <td>
+          <div class="fw-semibold text-truncate" style="max-width: 180px;" title="${ps.lugar_evento}">${ps.lugar_evento}</div>
+        </td>
+        <td>
+          <div class="fw-semibold text-dark">${ps.cliente_nombre}</div>
+          <small class="text-muted">Tel: ${ps.cliente_telefono || '-'}</small>
+        </td>
+        <td class="text-end fw-bold">${API.formatGs(ps.total)}</td>
+        <td class="text-end text-success">${API.formatGs(ps.senia_pagada)}</td>
+        <td class="text-end fw-bold ${ps.saldo_pendiente > 0 ? 'text-danger' : 'text-muted'}">${API.formatGs(ps.saldo_pendiente)}</td>
+        <td><span class="badge ${badgeEstados[ps.estado] || 'bg-secondary'} text-capitalize">${ps.estado.replace('_', ' ')}</span></td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="verComprobantePedidoServicio(${ps.id})" title="Imprimir Hoja de Trabajo y Contrato">
+              <i class="fa-solid fa-print"></i>
+            </button>
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Cambiar Estado"></button>
+            <ul class="dropdown-menu dropdown-menu-end small">
+              <li><a class="dropdown-item" href="javascript:void(0)" onclick="cambiarEstadoPedidoServicio(${ps.id}, 'programado')"><i class="fa-solid fa-calendar me-2 text-primary"></i>Programado</a></li>
+              <li><a class="dropdown-item" href="javascript:void(0)" onclick="cambiarEstadoPedidoServicio(${ps.id}, 'en_preparacion')"><i class="fa-solid fa-utensils me-2 text-warning"></i>En Preparación</a></li>
+              <li><a class="dropdown-item" href="javascript:void(0)" onclick="cambiarEstadoPedidoServicio(${ps.id}, 'entregado')"><i class="fa-solid fa-truck me-2 text-info"></i>Entregado / En Evento</a></li>
+              <li><a class="dropdown-item" href="javascript:void(0)" onclick="cambiarEstadoPedidoServicio(${ps.id}, 'finalizado')"><i class="fa-solid fa-check-double me-2 text-success"></i>Finalizado</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="cambiarEstadoPedidoServicio(${ps.id}, 'cancelado')"><i class="fa-solid fa-ban me-2"></i>Cancelar Evento</a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error cargando pedidos de servicios:', err);
+  }
+}
+
+async function abrirModalNuevoPedidoServicio(presupuestoId = null) {
+  document.getElementById('formNuevoPedidoServicio').reset();
+  document.getElementById('pedidoServicioFechaEvento').value = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  document.getElementById('pedidoServicioHoraEvento').value = '19:00';
+  document.getElementById('pedidoServicioTotal').value = '';
+  document.getElementById('pedidoServicioSenia').value = 0;
+  document.getElementById('pedidoServicioSaldo').value = '0 ₲';
+  document.getElementById('pedidoServicioObservaciones').value = '';
+
+  // Clientes
+  if (!clientesGlobal.length) await cargarClientesGlobal();
+  const selectCli = document.getElementById('pedidoServicioClienteId');
+  selectCli.innerHTML = '<option value="">-- Seleccionar Cliente --</option>' + clientesGlobal.map(c => `
+    <option value="${c.id}">${c.nombre_razon} (RUC: ${c.ruc_ci})</option>
+  `).join('');
+
+  // Presupuestos disponibles
+  const resPres = await API.get('/servicios/presupuestos');
+  const selPres = document.getElementById('pedidoServicioPresupuestoId');
+  selPres.innerHTML = '<option value="">-- Contrato Directo (Sin Presupuesto previo) --</option>';
+
+  if (resPres.success && resPres.presupuestos) {
+    resPres.presupuestos.forEach(p => {
+      selPres.innerHTML += `
+        <option value="${p.id}" data-cliente="${p.cliente_id}" data-total="${p.total}" data-obs="${p.observaciones || ''}">
+          ${p.numero_presupuesto} - ${p.cliente_nombre} (${API.formatGs(p.total)})
+        </option>
+      `;
+    });
+  }
+
+  if (presupuestoId) {
+    selPres.value = presupuestoId;
+    seleccionarPresupuestoParaPedido();
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('modalNuevoPedidoServicio'));
+  modal.show();
+}
+
+function seleccionarPresupuestoParaPedido() {
+  const selPres = document.getElementById('pedidoServicioPresupuestoId');
+  const selected = selPres.options[selPres.selectedIndex];
+  if (!selected || !selected.value) return;
+
+  const clienteId = selected.getAttribute('data-cliente');
+  const total = selected.getAttribute('data-total');
+  const obs = selected.getAttribute('data-obs');
+
+  if (clienteId) document.getElementById('pedidoServicioClienteId').value = clienteId;
+  if (total) {
+    document.getElementById('pedidoServicioTotal').value = total;
+    calcularSaldoPedidoServicio();
+  }
+  if (obs) document.getElementById('pedidoServicioObservaciones').value = obs;
+}
+
+function calcularSaldoPedidoServicio() {
+  const total = parseFloat(document.getElementById('pedidoServicioTotal')?.value) || 0;
+  const senia = parseFloat(document.getElementById('pedidoServicioSenia')?.value) || 0;
+  const saldo = Math.max(0, total - senia);
+  const elSaldo = document.getElementById('pedidoServicioSaldo');
+  if (elSaldo) elSaldo.value = API.formatGs(saldo);
+}
+
+async function aprobarYGenerarPedidoServicio(presupuestoId) {
+  await abrirModalNuevoPedidoServicio(presupuestoId);
+}
+
+async function guardarNuevoPedidoServicio(e) {
+  e.preventDefault();
+  const presupuestoId = document.getElementById('pedidoServicioPresupuestoId').value;
+  const clienteId = document.getElementById('pedidoServicioClienteId').value;
+  const fechaEvento = document.getElementById('pedidoServicioFechaEvento').value;
+  const horaEvento = document.getElementById('pedidoServicioHoraEvento').value;
+  const lugarEvento = document.getElementById('pedidoServicioLugarEvento').value;
+  const total = parseFloat(document.getElementById('pedidoServicioTotal').value);
+  const senia = parseFloat(document.getElementById('pedidoServicioSenia').value) || 0;
+  const observaciones = document.getElementById('pedidoServicioObservaciones').value;
+
+  try {
+    const res = await API.post('/servicios/pedidos', {
+      presupuesto_id: presupuestoId ? parseInt(presupuestoId) : null,
+      cliente_id: parseInt(clienteId),
+      fecha_evento: fechaEvento,
+      hora_evento: horaEvento,
+      lugar_evento: lugarEvento,
+      total,
+      senia_pagada: senia,
+      observaciones
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevoPedidoServicio')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Servicio / Evento Agendado',
+        text: `Orden ${res.numeroServicio} confirmada para el ${fechaEvento}. Saldo restante: ${API.formatGs(res.saldoPendiente)}.`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Contrato',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          verComprobantePedidoServicio(res.pedidoId);
+        }
+      });
+      cargarPedidosServicios();
+      cargarPresupuestos();
+      actualizarKPIsServicios();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verComprobantePedidoServicio(id) {
+  try {
+    const res = await API.get(`/servicios/pedidos/${id}`);
+    if (!res.success) return;
+    const { pedido: ps, detalles } = res;
+
+    const html = `
+      <div class="ticket-print p-4 bg-white text-dark" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #ddd; border-radius: 8px;">
+        <div class="row align-items-center mb-4 border-bottom pb-3">
+          <div class="col-8">
+            <h4 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-cake-candles me-2 text-warning"></i>PANADERÍA CAPIATÁ</h4>
+            <div class="small text-muted">Contratos de Eventos, Catering y Repostería Fina</div>
+            <div class="small text-muted">Ruta 2 Km 20 - Capiatá, Paraguay | Tel: (0228) 634-000</div>
+          </div>
+          <div class="col-4 text-end">
+            <span class="badge bg-warning text-dark fs-6 px-3 py-2 mb-1">ORDEN DE EVENTO</span>
+            <h5 class="fw-bold text-dark mb-0 font-monospace">${ps.numero_servicio}</h5>
+            <small class="text-muted d-block">Estado: <strong class="text-uppercase">${ps.estado.replace('_', ' ')}</strong></small>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4 bg-light p-3 rounded">
+          <div class="col-6">
+            <small class="text-muted text-uppercase fw-bold">Cliente Contratante:</small>
+            <div class="fw-bold fs-6 text-dark">${ps.cliente_nombre}</div>
+            <div class="small text-muted">RUC / CI: ${ps.cliente_ruc}</div>
+            <div class="small text-muted">Contacto: ${ps.cliente_telefono || '-'}</div>
+          </div>
+          <div class="col-6 text-end">
+            <small class="text-muted text-uppercase fw-bold">Coordinación Logística:</small>
+            <div class="fs-6 fw-bold text-primary"><i class="fa-solid fa-calendar me-1"></i> ${API.formatFecha(ps.fecha_evento)} &bull; ${ps.hora_evento} hs</div>
+            <div class="small"><strong>Lugar:</strong> ${ps.lugar_evento}</div>
+            <div class="small text-muted">${ps.numero_presupuesto ? `Asociado al Presupuesto: <strong>${ps.numero_presupuesto}</strong>` : 'Contratación Directa'}</div>
+          </div>
+        </div>
+
+        ${detalles && detalles.length > 0 ? `
+          <div class="table-responsive mb-4">
+            <h6 class="fw-bold text-muted text-uppercase small mb-2">Especificación de Servicios e Insumos:</h6>
+            <table class="table table-bordered table-sm align-middle small">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Descripción</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">Precio Unit.</th>
+                  <th class="text-end">Subtotal (₲)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${detalles.map((d, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td><strong>${d.descripcion}</strong></td>
+                    <td class="text-end">${d.cantidad}</td>
+                    <td class="text-end">${API.formatGs(d.precio_unitario)}</td>
+                    <td class="text-end fw-bold">${API.formatGs(d.subtotal)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <!-- Resumen Financiero y Pagos -->
+        <div class="card border-0 bg-light p-3 mb-4">
+          <div class="row align-items-center">
+            <div class="col-4 border-end text-center">
+              <small class="text-muted text-uppercase fw-semibold d-block">Total del Servicio</small>
+              <h5 class="fw-bold mb-0 text-dark">${API.formatGs(ps.total)}</h5>
+            </div>
+            <div class="col-4 border-end text-center">
+              <small class="text-muted text-uppercase fw-semibold d-block">Seña Abonada</small>
+              <h5 class="fw-bold mb-0 text-success">${API.formatGs(ps.senia_pagada)}</h5>
+            </div>
+            <div class="col-4 text-center">
+              <small class="text-muted text-uppercase fw-semibold d-block">Saldo Contra Entrega</small>
+              <h5 class="fw-bold mb-0 text-danger">${API.formatGs(ps.saldo_pendiente)}</h5>
+            </div>
+          </div>
+        </div>
+
+        ${ps.observaciones ? `
+          <div class="border rounded p-2 mb-4 bg-light small">
+            <strong>Instrucciones y Requerimientos de Entrega:</strong> ${ps.observaciones}
+          </div>
+        ` : ''}
+
+        <div class="row text-center mt-5 pt-4">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Encargado de Producción y Eventos<br>Panadería Capiatá</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y C.I. Cliente Aceptante<br>Recepción Conforme</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobantePedidoServicioBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobantePedidoServicio'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar la orden del servicio', 'error');
+  }
+}
+
+async function cambiarEstadoPedidoServicio(id, estado) {
+  try {
+    const res = await API.put(`/servicios/pedidos/${id}/estado`, { estado });
+    if (res.success) {
+      Swal.fire('Estado Actualizado', res.message, 'success');
+      cargarPedidosServicios();
+      actualizarKPIsServicios();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+// --- 15.3 CATÁLOGO DE SERVICIOS ---
+async function cargarCatalogoServicios() {
+  try {
+    const res = await API.get('/servicios');
+    if (!res.success) return;
+
+    catalogoServiciosGlobal = res.servicios || [];
+    const tbody = document.getElementById('tablaCatalogoServicios');
+    if (!tbody) return;
+
+    if (catalogoServiciosGlobal.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay servicios registrados en el catálogo</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = catalogoServiciosGlobal.map(s => `
+      <tr>
+        <td><code>${s.codigo}</code></td>
+        <td class="fw-bold text-dark">${s.nombre}</td>
+        <td><span class="badge bg-secondary-subtle text-dark text-capitalize">${s.unidad_servicio}</span></td>
+        <td class="text-end fw-bold text-success">${API.formatGs(s.precio_sugerido)}</td>
+        <td><small class="text-muted">${s.descripcion || '-'}</small></td>
+        <td><span class="badge bg-success">Activo</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error cargando catálogo de servicios:', err);
+  }
+}
+
+function abrirModalNuevoCatalogoServicio() {
+  document.getElementById('formNuevoCatalogoServicio').reset();
+  const modal = new bootstrap.Modal(document.getElementById('modalNuevoCatalogoServicio'));
+  modal.show();
+}
+
+async function guardarNuevoCatalogoServicio(e) {
+  e.preventDefault();
+  const body = {
+    codigo: document.getElementById('catServicioCodigo').value,
+    nombre: document.getElementById('catServicioNombre').value,
+    unidad_servicio: document.getElementById('catServicioUnidad').value,
+    precio_sugerido: parseFloat(document.getElementById('catServicioPrecio').value) || 0,
+    descripcion: document.getElementById('catServicioDescripcion').value
+  };
+
+  try {
+    const res = await API.post('/servicios', body);
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalNuevoCatalogoServicio')).hide();
+      Swal.fire('Servicio Registrado', 'Se ha añadido al catálogo correctamente', 'success');
+      cargarCatalogoServicios();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+

@@ -3,7 +3,7 @@
 **Proyecto de Tesis - UNIGRAN**  
 **Tesista:** Bruno Matías Báez Medina  
 **Carrera:** Licenciatura en Análisis de Sistemas Informáticos  
-**Total de Tablas Implementadas:** 34 tablas  
+**Total de Tablas Implementadas:** 38 tablas  
 
 ---
 
@@ -427,6 +427,64 @@ erDiagram
     }
 
     %% ==========================================
+    %% MÓDULO: SERVICIOS Y PRESUPUESTOS
+    %% ==========================================
+    SERVICIOS {
+        int id PK
+        string codigo
+        string nombre
+        text descripcion
+        decimal precio_sugerido
+        string unidad_servicio
+        int estado
+        datetime created_at
+    }
+
+    PRESUPUESTOS {
+        int id PK
+        string numero_presupuesto
+        int cliente_id FK
+        int usuario_id FK
+        date fecha_emision
+        date fecha_vencimiento
+        decimal subtotal
+        decimal descuento
+        decimal total
+        string estado
+        text observaciones
+        datetime created_at
+    }
+
+    PRESUPUESTOS_DETALLES {
+        int id PK
+        int presupuesto_id FK
+        string tipo_item
+        int producto_id FK
+        int servicio_id FK
+        string descripcion
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    PEDIDOS_SERVICIOS {
+        int id PK
+        string numero_servicio
+        int presupuesto_id FK
+        int cliente_id FK
+        int usuario_id FK
+        date fecha_evento
+        string hora_evento
+        string lugar_evento
+        decimal total
+        decimal senia_pagada
+        decimal saldo_pendiente
+        string estado
+        text observaciones
+        datetime created_at
+    }
+
+    %% ==========================================
     %% RELACIONES ENTRE TABLAS
     %% ==========================================
     USUARIOS ||--o{ AUDITORIA_LOGS : "registra"
@@ -471,11 +529,20 @@ erDiagram
     COMPRAS ||--|{ COMPRAS_DETALLES : "detalla ingreso"
     COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "ajusta o devuelve"
     NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "detalla devolucion"
+
+    CLIENTES ||--o{ PRESUPUESTOS : "solicita cotizacion"
+    USUARIOS ||--o{ PRESUPUESTOS : "emite cotizacion"
+    PRESUPUESTOS ||--|{ PRESUPUESTOS_DETALLES : "detalla renglones"
+    SERVICIOS ||--o{ PRESUPUESTOS_DETALLES : "cotiza servicio"
+    PRODUCTOS ||--o{ PRESUPUESTOS_DETALLES : "cotiza producto"
+    PRESUPUESTOS ||--o{ PEDIDOS_SERVICIOS : "origina contrato"
+    CLIENTES ||--o{ PEDIDOS_SERVICIOS : "contrata evento"
+    USUARIOS ||--o{ PEDIDOS_SERVICIOS : "agenda servicio"
 ```
 
 ---
 
-## 2. Diccionario de Entidades del Sistema (34 Tablas)
+## 2. Diccionario de Entidades del Sistema (38 Tablas)
 
 | Módulo | Entidad | Descripción |
 | :--- | :--- | :--- |
@@ -513,3 +580,7 @@ erDiagram
 | **Compras** | `compras_detalles` | Renglones de compras con asignación de lote y fecha de vencimiento. |
 | **Compras** | `notas_credito_compras` | Notas de crédito recibidas de proveedores por devolución o descuento. |
 | **Compras** | `notas_credito_compras_detalles` | Ítems devueltos con descuento de inventario y salida en Kardex. |
+| **Servicios** | `servicios` | Catálogo de servicios especiales (catering, coffee breaks, tortas personalizadas). |
+| **Servicios** | `presupuestos` | Cotizaciones y presupuestos formales emitidos a clientes (`PRE-XXXXXXX`). |
+| **Servicios** | `presupuestos_detalles` | Discriminación de servicios y productos cotizados con precios acordados. |
+| **Servicios** | `pedidos_servicios` | Contratos y órdenes de eventos (`SRV-ORD-XXXXXXX`) con seña, lugar y hora. |

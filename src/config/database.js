@@ -579,6 +579,69 @@ const initDatabase = async () => {
       FOREIGN KEY (nota_credito_id) REFERENCES notas_credito_compras(id) ON DELETE CASCADE,
       FOREIGN KEY (producto_id) REFERENCES productos(id)
     );
+
+    CREATE TABLE IF NOT EXISTS servicios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      codigo TEXT UNIQUE NOT NULL,
+      nombre TEXT NOT NULL,
+      descripcion TEXT,
+      precio_sugerido REAL DEFAULT 0,
+      unidad_servicio TEXT DEFAULT 'servicio',
+      estado INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS presupuestos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_presupuesto TEXT UNIQUE NOT NULL,
+      cliente_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_emision DATE NOT NULL,
+      fecha_vencimiento DATE NOT NULL,
+      subtotal REAL NOT NULL DEFAULT 0,
+      descuento REAL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      estado TEXT DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'aprobado', 'rechazado', 'vencido', 'facturado')),
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS presupuestos_detalles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      presupuesto_id INTEGER NOT NULL,
+      tipo_item TEXT NOT NULL CHECK(tipo_item IN ('producto', 'servicio')),
+      producto_id INTEGER,
+      servicio_id INTEGER,
+      descripcion TEXT NOT NULL,
+      cantidad REAL NOT NULL,
+      precio_unitario REAL NOT NULL,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (presupuesto_id) REFERENCES presupuestos(id) ON DELETE CASCADE,
+      FOREIGN KEY (producto_id) REFERENCES productos(id),
+      FOREIGN KEY (servicio_id) REFERENCES servicios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS pedidos_servicios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_servicio TEXT UNIQUE NOT NULL,
+      presupuesto_id INTEGER,
+      cliente_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_evento DATE NOT NULL,
+      hora_evento TEXT,
+      lugar_evento TEXT NOT NULL,
+      total REAL NOT NULL,
+      senia_pagada REAL DEFAULT 0,
+      saldo_pendiente REAL DEFAULT 0,
+      estado TEXT DEFAULT 'programado' CHECK(estado IN ('programado', 'en_preparacion', 'entregado', 'finalizado', 'cancelado')),
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (presupuesto_id) REFERENCES presupuestos(id),
+      FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
   `);
 
   // Migraciones seguras para ventas
@@ -605,6 +668,18 @@ const initDatabase = async () => {
   const cajaExistente = await get('SELECT id FROM cajas LIMIT 1');
   if (!cajaExistente) {
     await run(`INSERT INTO cajas (nombre, punto_expedicion, establecimiento) VALUES ('Caja 01 - Salón Principal', '001', '001')`);
+  }
+
+  // Asegurar servicios iniciales
+  const servCount = await get('SELECT COUNT(*) as count FROM servicios');
+  if (servCount.count === 0) {
+    await run(`INSERT INTO servicios (codigo, nombre, descripcion, precio_sugerido, unidad_servicio) VALUES
+      ('SRV-001', 'Servicio de Coffee Break Empresarial', 'Montaje completo de mesa de bocaditos salados, panes gourmet, café, leche y jugos.', 350000, 'evento'),
+      ('SRV-002', 'Mesa de Dulces y Confitería para Eventos', 'Armado temático de dulces finos, masas, alfajores y postres para Bodas y 15 Años.', 750000, 'evento'),
+      ('SRV-003', 'Decoración Artística de Torta Personalizada', 'Decoración especial con fondant o crema chantilly según diseño solicitado.', 120000, 'torta'),
+      ('SRV-004', 'Alquiler de Fuente de Chocolate y Vajilla', 'Incluye fuente de cascada de chocolate belga, frutas, vajilla fina y pinchos.', 280000, 'servicio'),
+      ('SRV-005', 'Asistencia y Mozos para Servicio de Panadería', 'Personal uniformado para atención de mesas, reposición y cafetería.', 150000, 'persona')
+    `);
   }
 
   // Run seed data if empty
