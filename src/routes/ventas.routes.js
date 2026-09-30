@@ -134,13 +134,20 @@ router.post('/', verifyToken, async (req, res, next) => {
       cliente_id,
       deposito_id,
       tipo_comprobante = 'ticket',
+      condicion_venta = 'contado',
       metodo_pago = 'efectivo',
       monto_recibido = 0,
+      dias_credito = 30,
+      cuotas = 1,
       items
     } = req.body;
 
     if (!deposito_id || !items || !items.length) {
       return res.status(400).json({ success: false, message: 'Datos incompletos o carrito de venta vacío' });
+    }
+
+    if (condicion_venta === 'credito' && !cliente_id) {
+      return res.status(400).json({ success: false, message: 'Para ventas a crédito debe seleccionar obligatoriamente un cliente registrado.' });
     }
 
     // 1. Verify stock availability
@@ -176,36 +183,60 @@ router.post('/', verifyToken, async (req, res, next) => {
     }
 
     const totalVenta = subtotalGeneral;
-    const vuelto = Math.max(0, (Number(monto_recibido) || totalVenta) - totalVenta);
+    const vuelto = condicion_venta === 'credito' ? 0 : Math.max(0, (Number(monto_recibido) || totalVenta) - totalVenta);
 
     // 3. Generate receipt number
     const countVentas = await get('SELECT COUNT(*) as count FROM ventas');
     const prefijo = tipo_comprobante === 'factura' ? 'FAC-001-' : 'TKT-';
     const numeroComprobante = `${prefijo}${String(countVentas.count + 1).padStart(7, '0')}`;
 
+    // Buscar sesión de caja abierta
+    const sesionActiva = await get("SELECT id FROM sesiones_caja WHERE estado = 'abierta' ORDER BY id DESC LIMIT 1");
+    const sesionCajaId = sesionActiva ? sesionActiva.id : null;
+
     // 4. Insert sale header
     const resultVenta = await run(`
       INSERT INTO ventas (
         numero_comprobante, tipo_comprobante, cliente_id, usuario_id,
-        deposito_id, subtotal, iva_5, iva_10, total,
+        deposito_id, sesion_caja_id, condicion_venta, subtotal, iva_5, iva_10, total,
         metodo_pago, monto_recibido, vuelto, estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
     `, [
       numeroComprobante,
       tipo_comprobante,
       cliente_id || null,
       req.usuario.id,
       deposito_id,
+      sesionCajaId,
+      condicion_venta,
       subtotalGeneral,
       iva5Total,
       iva10Total,
       totalVenta,
-      metodo_pago,
-      Number(monto_recibido) || totalVenta,
+      condicion_venta === 'credito' ? 'credito' : metodo_pago,
+      condicion_venta === 'credito' ? 0 : (Number(monto_recibido) || totalVenta),
       vuelto
     ]);
 
     const ventaId = resultVenta.lastID;
+
+    // Si es a crédito, generar cuenta a cobrar
+    if (condicion_venta === 'credito') {
+      const cantCuotas = Math.max(1, Number(cuotas) || 1);
+      const montoPorCuota = Math.round(totalVenta / cantCuotas);
+      const diasPorCuota = Math.max(15, Number(dias_credito) || 30);
+
+      for (let i = 1; i <= cantCuotas; i++) {
+        const montoCuotaActual = i === cantCuotas ? (totalVenta - montoPorCuota * (cantCuotas - 1)) : montoPorCuota;
+        const diasOffset = diasPorCuota * i;
+        await run(`
+          INSERT INTO cuentas_cobrar (
+            venta_id, cliente_id, numero_cuota, total_cuotas,
+            monto_cuota, saldo_pendiente, fecha_vencimiento, estado
+          ) VALUES (?, ?, ?, ?, ?, ?, DATE('now', '+' || ? || ' days', 'localtime'), 'pendiente')
+        `, [ventaId, cliente_id, i, cantCuotas, montoCuotaActual, montoCuotaActual, diasOffset]);
+      }
+    }
 
     // 5. Insert details, deduct stock and update Kardex & FIFO lots
     for (const item of items) {

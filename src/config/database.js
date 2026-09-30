@@ -420,7 +420,101 @@ const initDatabase = async () => {
       fecha DATETIME DEFAULT (DATETIME('now', 'localtime')),
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     );
+
+    CREATE TABLE IF NOT EXISTS cajas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL UNIQUE,
+      punto_expedicion TEXT DEFAULT '001',
+      establecimiento TEXT DEFAULT '001',
+      estado INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sesiones_caja (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      caja_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_apertura DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      fecha_cierre DATETIME,
+      monto_apertura REAL NOT NULL,
+      monto_sistema REAL DEFAULT 0,
+      monto_cierre_efectivo REAL DEFAULT 0,
+      diferencia REAL DEFAULT 0,
+      recaudacion_depositar REAL DEFAULT 0,
+      estado TEXT DEFAULT 'abierta' CHECK(estado IN ('abierta', 'cerrada')),
+      observaciones TEXT,
+      FOREIGN KEY (caja_id) REFERENCES cajas(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS movimientos_caja (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sesion_caja_id INTEGER NOT NULL,
+      tipo_movimiento TEXT NOT NULL CHECK(tipo_movimiento IN ('ingreso', 'egreso')),
+      concepto TEXT NOT NULL,
+      monto REAL NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (sesion_caja_id) REFERENCES sesiones_caja(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS cuentas_cobrar (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      venta_id INTEGER NOT NULL,
+      cliente_id INTEGER NOT NULL,
+      numero_cuota INTEGER DEFAULT 1,
+      total_cuotas INTEGER DEFAULT 1,
+      monto_cuota REAL NOT NULL,
+      saldo_pendiente REAL NOT NULL,
+      fecha_vencimiento DATE NOT NULL,
+      estado TEXT DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'parcial', 'pagada', 'vencida')),
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (venta_id) REFERENCES ventas(id),
+      FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS cobros (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_recibo TEXT UNIQUE NOT NULL,
+      cliente_id INTEGER NOT NULL,
+      sesion_caja_id INTEGER,
+      usuario_id INTEGER NOT NULL,
+      fecha_cobro DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      monto_total REAL NOT NULL,
+      forma_cobro TEXT DEFAULT 'efectivo' CHECK(forma_cobro IN ('efectivo', 'tarjeta', 'transferencia_qr', 'cheque')),
+      observaciones TEXT,
+      created_at DATETIME DEFAULT (DATETIME('now', 'localtime')),
+      FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+      FOREIGN KEY (sesion_caja_id) REFERENCES sesiones_caja(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS cobros_detalles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cobro_id INTEGER NOT NULL,
+      cuenta_cobrar_id INTEGER NOT NULL,
+      monto_aplicado REAL NOT NULL,
+      FOREIGN KEY (cobro_id) REFERENCES cobros(id) ON DELETE CASCADE,
+      FOREIGN KEY (cuenta_cobrar_id) REFERENCES cuentas_cobrar(id)
+    );
   `);
+
+  // Migraciones seguras para ventas
+  const colInfo = await all('PRAGMA table_info(ventas)');
+  const colNames = colInfo.map(c => c.name);
+  if (!colNames.includes('sesion_caja_id')) {
+    await exec('ALTER TABLE ventas ADD COLUMN sesion_caja_id INTEGER REFERENCES sesiones_caja(id);');
+  }
+  if (!colNames.includes('condicion_venta')) {
+    await exec("ALTER TABLE ventas ADD COLUMN condicion_venta TEXT DEFAULT 'contado';");
+  }
+
+  // Asegurar existencia de caja inicial por defecto
+  const cajaExistente = await get('SELECT id FROM cajas LIMIT 1');
+  if (!cajaExistente) {
+    await run(`INSERT INTO cajas (nombre, punto_expedicion, establecimiento) VALUES ('Caja 01 - Salón Principal', '001', '001')`);
+  }
 
   // Run seed data if empty
   await seedInitialData();

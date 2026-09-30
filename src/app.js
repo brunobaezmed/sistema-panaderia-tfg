@@ -29,6 +29,8 @@ const ajustesRoutes = require('./routes/ajustes.routes');
 const kardexRoutes = require('./routes/kardex.routes');
 const reportesRoutes = require('./routes/reportes.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
+const cajaRoutes = require('./routes/caja.routes');
+const creditosRoutes = require('./routes/creditos.routes');
 
 const app = express();
 
@@ -50,6 +52,8 @@ app.use('/api/produccion', produccionRoutes);
 app.use('/api/depositos', depositosRoutes);
 app.use('/api/compras', comprasRoutes);
 app.use('/api/ventas', ventasRoutes);
+app.use('/api/caja', cajaRoutes);
+app.use('/api/creditos', creditosRoutes);
 app.use('/api/ajustes', ajustesRoutes);
 app.use('/api/kardex', kardexRoutes);
 app.use('/api/reportes', reportesRoutes);

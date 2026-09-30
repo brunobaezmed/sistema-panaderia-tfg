@@ -150,6 +150,8 @@ function navigate(viewName) {
     'recetas': 'Recetario y Fórmulas de Panadería',
     'produccion': 'Gestión de Producción / Horneadas',
     'pos': 'Punto de Venta (POS Mostrador)',
+    'caja': 'Gestión de Caja y Turnos',
+    'creditos': 'Cartera de Cuentas por Cobrar',
     'ventas-historial': 'Historial de Ventas y Facturación',
     'compras': 'Gestión de Compras y Proveedores',
     'depositos': 'Depósitos y Transferencias Internas',
@@ -176,6 +178,12 @@ function navigate(viewName) {
       break;
     case 'pos':
       cargarPOSView();
+      break;
+    case 'caja':
+      cargarCaja();
+      break;
+    case 'creditos':
+      cargarCreditos();
       break;
     case 'ventas-historial':
       cargarHistorialVentas();
@@ -1157,6 +1165,22 @@ function posCalcularVuelto() {
   document.getElementById('posVueltoTxt').textContent = API.formatGs(vuelto);
 }
 
+function posCambioCondicionVenta() {
+  const cond = document.getElementById('posCondicionVenta') ? document.getElementById('posCondicionVenta').value : 'contado';
+  const pContado = document.getElementById('posPanelContado');
+  const pCredito = document.getElementById('posPanelCredito');
+  const btn = document.getElementById('posBtnConfirmar');
+  if (cond === 'credito') {
+    if (pContado) pContado.classList.add('d-none');
+    if (pCredito) pCredito.classList.remove('d-none');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-hand-holding-dollar me-2"></i> Registrar Venta a Crédito';
+  } else {
+    if (pContado) pContado.classList.remove('d-none');
+    if (pCredito) pCredito.classList.add('d-none');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-print me-2"></i> Cobrar e Imprimir Ticket';
+  }
+}
+
 async function posConfirmSale() {
   if (posCart.length === 0) {
     Swal.fire('Carrito Vacío', 'Agregue al menos un producto para registrar la venta', 'warning');
@@ -1166,22 +1190,48 @@ async function posConfirmSale() {
   const mostradorDep = depositosGlobal.find(d => d.nombre.includes('Mostrador')) || depositosGlobal[0];
   const clienteId = document.getElementById('posClientSelect').value;
   const tipoComprobante = document.getElementById('posReceiptType').value;
-  const metodoPago = document.getElementById('posPaymentMethod').value;
+  const condicionVenta = document.getElementById('posCondicionVenta') ? document.getElementById('posCondicionVenta').value : 'contado';
+  const metodoPago = document.getElementById('posPaymentMethod') ? document.getElementById('posPaymentMethod').value : 'efectivo';
   const montoRecibido = parseFloat(document.getElementById('posMontoRecibido').value) || 0;
+  const diasCredito = document.getElementById('posDiasCredito') ? parseInt(document.getElementById('posDiasCredito').value) || 30 : 30;
+  const cuotasCredito = document.getElementById('posCuotasCredito') ? parseInt(document.getElementById('posCuotasCredito').value) || 1 : 1;
+
+  if (condicionVenta === 'credito' && (!clienteId || clienteId == '1')) {
+    Swal.fire('Cliente Requerido', 'Para ventas a crédito debe seleccionar un cliente con nombre y RUC registrado (no se permite Consumidor Final).', 'warning');
+    return;
+  }
 
   try {
     const res = await API.post('/ventas', {
       cliente_id: clienteId,
       deposito_id: mostradorDep.id,
       tipo_comprobante: tipoComprobante,
+      condicion_venta: condicionVenta,
       metodo_pago: metodoPago,
       monto_recibido: montoRecibido,
+      dias_credito: diasCredito,
+      cuotas: cuotasCredito,
       items: posCart
     });
 
     if (res.success) {
-      // Show Printable Ticket
-      mostrarTicketModal(res.ventaId);
+      if (condicionVenta === 'credito') {
+        Swal.fire({
+          icon: 'success',
+          title: 'Venta a Crédito Registrada',
+          text: `Comprobante ${res.numeroComprobante} generado por ${API.formatGs(res.total)}. Se registró en Cuentas a Cobrar.`,
+          showCancelButton: true,
+          confirmButtonText: 'Ver Cuentas a Cobrar',
+          cancelButtonText: 'Continuar en POS'
+        }).then(result => {
+          if (result.isConfirmed) {
+            navigate('creditos');
+          }
+        });
+      } else {
+        // Show Printable Ticket
+        mostrarTicketModal(res.ventaId);
+      }
       posClearCart();
       document.getElementById('posMontoRecibido').value = '';
       await cargarGlobalMetadata();
@@ -2316,5 +2366,665 @@ async function abrirModalEditarLote(loteId) {
     modal.show();
   } catch (err) {
     Swal.fire('Error', 'No se pudo cargar la información del lote', 'error');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 12. GESTIÓN DE CAJA Y TURNOS
+// --------------------------------------------------------------------------
+let sesionCajaActual = null;
+
+async function cargarCaja() {
+  try {
+    const res = await API.get('/caja/sesion-activa');
+    if (!res.success) return;
+
+    const panel = document.getElementById('cajaPanelEstado');
+    if (!panel) return;
+
+    if (res.activa && res.sesion) {
+      sesionCajaActual = res.sesion;
+      const s = res.sesion;
+      panel.innerHTML = `
+        <div class="card border-0 shadow-sm border-start border-4 border-success p-3 bg-white">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success px-2 py-1"><i class="fa-solid fa-lock-open me-1"></i> CAJA ABIERTA (TURNO ACTIVO)</span>
+                <span class="fw-bold text-dark fs-6">${s.caja_nombre}</span>
+              </div>
+              <small class="text-muted">
+                Apertura: ${new Date(s.fecha_apertura).toLocaleString('es-PY')} | Cajero: <strong>${s.usuario_nombre}</strong>
+              </small>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-success btn-sm fw-semibold" onclick="abrirModalMovimiento('ingreso')">
+                <i class="fa-solid fa-plus-circle me-1"></i> Ingreso Extra
+              </button>
+              <button class="btn btn-outline-danger btn-sm fw-semibold" onclick="abrirModalMovimiento('egreso')">
+                <i class="fa-solid fa-minus-circle me-1"></i> Egreso / Retiro
+              </button>
+              <button class="btn btn-danger btn-sm fw-bold shadow-sm" onclick="abrirModalCierreCaja()">
+                <i class="fa-solid fa-calculator me-1"></i> Arqueo y Cierre de Caja
+              </button>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-light text-center">
+                <small class="text-muted d-block">Fondo Inicial</small>
+                <span class="fw-bold fs-6 text-dark">${API.formatGs(s.monto_apertura)}</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-light text-center">
+                <small class="text-muted d-block">(+) Ventas Efectivo</small>
+                <span class="fw-bold fs-6 text-success">${API.formatGs(s.ventas_efectivo)}</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-light text-center">
+                <small class="text-muted d-block">(+) Cobros Créditos</small>
+                <span class="fw-bold fs-6 text-success">${API.formatGs(s.cobros_credito_efectivo)}</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-light text-center">
+                <small class="text-muted d-block">(+) Ventas Tarjeta/QR</small>
+                <span class="fw-bold fs-6 text-info">${API.formatGs(s.ventas_tarjeta + s.ventas_qr)}</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-light text-center">
+                <small class="text-muted d-block">Mov. Extra (+ / -)</small>
+                <span class="fw-bold fs-6 ${s.ingresos_extra >= s.egresos_extra ? 'text-primary' : 'text-danger'}">
+                  ${API.formatGs(s.ingresos_extra - s.egresos_extra)}
+                </span>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="p-2 border rounded bg-success-subtle border-success text-center">
+                <small class="text-success-emphasis fw-bold d-block">SALDO TEÓRICO EFECTIVO</small>
+                <span class="fw-bold fs-6 text-success-emphasis">${API.formatGs(s.saldo_teorico_efectivo)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      sesionCajaActual = null;
+      panel.innerHTML = `
+        <div class="card border-0 shadow-sm border-start border-4 border-warning p-4 bg-white text-center">
+          <div class="py-3">
+            <i class="fa-solid fa-lock fa-3x text-warning mb-3"></i>
+            <h5 class="fw-bold text-dark mb-1">La Caja se encuentra actualmente CERRADA</h5>
+            <p class="text-muted small mb-3">Para realizar cobros en mostrador y registrar transacciones de turno, debe abrir una caja con un fondo inicial.</p>
+            <button class="btn btn-warning text-white fw-bold px-4 py-2 shadow-sm" style="background-color: #d97706;" onclick="abrirModalAperturaCaja()">
+              <i class="fa-solid fa-key me-2"></i> Abrir Caja con Fondo Inicial
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    cargarMovimientosCaja();
+  } catch (err) {
+    console.error('Error al cargar caja:', err);
+  }
+}
+
+async function cargarMovimientosCaja() {
+  try {
+    const res = await API.get('/caja/movimientos');
+    const tbody = document.getElementById('tablaCajaMovimientos');
+    if (!tbody) return;
+
+    if (!res.success || !res.movimientos.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">
+            <i class="fa-solid fa-receipt fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0">No se han registrado movimientos extraordinarios en esta sesión.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = res.movimientos.map(m => `
+      <tr>
+        <td>${new Date(m.created_at).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })}</td>
+        <td>
+          <span class="badge ${m.tipo_movimiento === 'ingreso' ? 'bg-success' : 'bg-danger'}">
+            <i class="fa-solid ${m.tipo_movimiento === 'ingreso' ? 'fa-arrow-down' : 'fa-arrow-up'} me-1"></i>
+            ${m.tipo_movimiento.toUpperCase()}
+          </span>
+        </td>
+        <td class="fw-semibold text-dark">${m.concepto}</td>
+        <td>${m.usuario_nombre}</td>
+        <td class="text-end fw-bold ${m.tipo_movimiento === 'ingreso' ? 'text-success' : 'text-danger'}">
+          ${m.tipo_movimiento === 'ingreso' ? '+' : '-'}${API.formatGs(m.monto)}
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error al cargar movimientos de caja:', err);
+  }
+}
+
+async function abrirModalAperturaCaja() {
+  try {
+    const res = await API.get('/caja/cajas');
+    const select = document.getElementById('aperturaCajaId');
+    if (res.success && res.cajas) {
+      select.innerHTML = res.cajas.map(c => `
+        <option value="${c.id}">${c.nombre} (Punto Exp. ${c.punto_expedicion})</option>
+      `).join('');
+    }
+    document.getElementById('aperturaMonto').value = '150000';
+    document.getElementById('aperturaObs').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('modalAbrirCaja'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudieron cargar las terminales de caja', 'error');
+  }
+}
+
+async function guardarAperturaCaja(e) {
+  e.preventDefault();
+  const cajaId = document.getElementById('aperturaCajaId').value;
+  const monto = parseFloat(document.getElementById('aperturaMonto').value) || 0;
+  const obs = document.getElementById('aperturaObs').value;
+
+  try {
+    const res = await API.post('/caja/apertura', {
+      caja_id: cajaId,
+      monto_apertura: monto,
+      observaciones: obs
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalAbrirCaja')).hide();
+      Swal.fire('Caja Abierta', 'El turno de caja ha sido habilitado con éxito', 'success');
+      cargarCaja();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+function abrirModalMovimiento(tipo) {
+  if (!sesionCajaActual) {
+    Swal.fire('Caja Cerrada', 'Debe abrir la caja antes de registrar movimientos extraordinarios', 'warning');
+    return;
+  }
+  document.getElementById('movTipo').value = tipo;
+  document.getElementById('movConcepto').value = '';
+  document.getElementById('movMonto').value = '';
+
+  const header = document.getElementById('modalMovimientoHeader');
+  const titulo = document.getElementById('modalMovimientoTitulo');
+  const btn = document.getElementById('movBtnGuardar');
+
+  if (tipo === 'ingreso') {
+    header.className = 'modal-header bg-success text-white';
+    titulo.innerHTML = '<i class="fa-solid fa-arrow-down me-2"></i> Registrar Ingreso Extraordinario';
+    btn.className = 'btn btn-success fw-bold';
+    btn.textContent = 'Registrar Ingreso';
+  } else {
+    header.className = 'modal-header bg-danger text-white';
+    titulo.innerHTML = '<i class="fa-solid fa-arrow-up me-2"></i> Registrar Egreso / Retiro de Efectivo';
+    btn.className = 'btn btn-danger fw-bold';
+    btn.textContent = 'Registrar Egreso';
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('modalMovimientoCaja'));
+  modal.show();
+}
+
+async function guardarMovimientoCaja(e) {
+  e.preventDefault();
+  const tipo = document.getElementById('movTipo').value;
+  const concepto = document.getElementById('movConcepto').value;
+  const monto = parseFloat(document.getElementById('movMonto').value) || 0;
+
+  try {
+    const res = await API.post('/caja/movimiento', {
+      tipo_movimiento: tipo,
+      concepto,
+      monto
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalMovimientoCaja')).hide();
+      Swal.fire('Movimiento Registrado', 'La operación fue asentada en la sesión activa', 'success');
+      cargarCaja();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function abrirModalCierreCaja() {
+  if (!sesionCajaActual) return;
+  const s = sesionCajaActual;
+
+  document.getElementById('cierreFondoInicial').textContent = API.formatGs(s.monto_apertura);
+  document.getElementById('cierreVentasEfectivo').textContent = API.formatGs(s.ventas_efectivo);
+  document.getElementById('cierreCobrosEfectivo').textContent = API.formatGs(s.cobros_credito_efectivo);
+  document.getElementById('cierreIngresosExtra').textContent = API.formatGs(s.ingresos_extra);
+  document.getElementById('cierreEgresosExtra').textContent = API.formatGs(s.egresos_extra);
+  document.getElementById('cierreSaldoTeorico').textContent = API.formatGs(s.saldo_teorico_efectivo);
+
+  document.getElementById('cierreEfectivoFisico').value = s.saldo_teorico_efectivo;
+  document.getElementById('cierreRecaudacionDepositar').value = s.saldo_teorico_efectivo;
+  document.getElementById('cierreObservaciones').value = '';
+
+  calcularDiferenciaCierre();
+
+  const modal = new bootstrap.Modal(document.getElementById('modalCerrarCaja'));
+  modal.show();
+}
+
+function calcularDiferenciaCierre() {
+  if (!sesionCajaActual) return;
+  const teorico = sesionCajaActual.saldo_teorico_efectivo;
+  const fisico = parseFloat(document.getElementById('cierreEfectivoFisico').value) || 0;
+  const dif = fisico - teorico;
+
+  const box = document.getElementById('cierreDiferenciaBox');
+  if (dif === 0) {
+    box.className = 'p-2 border rounded fw-bold fs-5 text-center text-primary bg-primary-subtle border-primary';
+    box.textContent = '0 ₲ (Arqueo Exacto)';
+  } else if (dif > 0) {
+    box.className = 'p-2 border rounded fw-bold fs-5 text-center text-success bg-success-subtle border-success';
+    box.textContent = `+${API.formatGs(dif)} (SOBRANTE EN CAJA)`;
+  } else {
+    box.className = 'p-2 border rounded fw-bold fs-5 text-center text-danger bg-danger-subtle border-danger';
+    box.textContent = `${API.formatGs(dif)} (FALTANTE EN CAJA)`;
+  }
+
+  // Actualizar sugerencia de recaudación a depositar
+  document.getElementById('cierreRecaudacionDepositar').value = fisico;
+}
+
+async function guardarCierreCaja(e) {
+  e.preventDefault();
+  const fisico = parseFloat(document.getElementById('cierreEfectivoFisico').value) || 0;
+  const aDepositar = parseFloat(document.getElementById('cierreRecaudacionDepositar').value) || 0;
+  const obs = document.getElementById('cierreObservaciones').value;
+
+  try {
+    const res = await API.post('/caja/cierre', {
+      monto_cierre_efectivo: fisico,
+      recaudacion_depositar: aDepositar,
+      observaciones: obs
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalCerrarCaja')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Caja Cerrada Correctamente',
+        text: 'Se generó el acta de arqueo y boleta de recaudación a depositar.',
+        confirmButtonText: 'Ver Acta de Cierre'
+      }).then(() => {
+        verComprobanteCierre(res.resumen.sesion_id);
+      });
+      cargarCaja();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function cargarHistorialCajas() {
+  try {
+    const res = await API.get('/caja/historial');
+    const tbody = document.getElementById('tablaCajaHistorial');
+    if (!tbody) return;
+
+    if (!res.success || !res.historial.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="11" class="text-center text-muted py-4">No hay turnos cerrados registrados.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = res.historial.map(h => `
+      <tr>
+        <td class="fw-bold">#${h.id}</td>
+        <td>${h.caja_nombre}</td>
+        <td>${h.cajero_nombre}</td>
+        <td>${new Date(h.fecha_apertura).toLocaleString('es-PY')}</td>
+        <td>${h.fecha_cierre ? new Date(h.fecha_cierre).toLocaleString('es-PY') : '-'}</td>
+        <td class="text-end">${API.formatGs(h.monto_apertura)}</td>
+        <td class="text-end">${API.formatGs(h.monto_sistema)}</td>
+        <td class="text-end fw-bold">${API.formatGs(h.monto_cierre_efectivo)}</td>
+        <td class="text-end fw-bold ${h.diferencia === 0 ? 'text-primary' : (h.diferencia > 0 ? 'text-success' : 'text-danger')}">
+          ${h.diferencia > 0 ? '+' : ''}${API.formatGs(h.diferencia)}
+        </td>
+        <td class="text-end text-success fw-bold">${API.formatGs(h.recaudacion_depositar)}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline-primary py-0" onclick="verComprobanteCierre(${h.id})" title="Imprimir Acta">
+            <i class="fa-solid fa-print"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error al cargar historial de cajas:', err);
+  }
+}
+
+async function verComprobanteCierre(sesionId) {
+  try {
+    const res = await API.get(`/caja/sesion/${sesionId}`);
+    if (!res.success) return;
+    const { sesion, ventas, movimientos, cobros } = res;
+
+    const html = `
+      <div class="ticket-print border p-4 bg-white" style="font-family: monospace; font-size: 13px;">
+        <div class="text-center border-bottom pb-3 mb-3">
+          <h5 class="fw-bold mb-1">PANADERÍA Y CONFITERÍA CAPIATÁ</h5>
+          <small class="text-muted d-block">ACTA OFICIAL DE CIERRE DE CAJA Y ARQUEO</small>
+          <small class="text-muted d-block">Punto de Expedición: ${sesion.punto_expedicion} | Estab: ${sesion.establecimiento}</small>
+        </div>
+
+        <div class="mb-3 small">
+          <div><strong>Sesión Nº:</strong> #${sesion.id} - ${sesion.caja_nombre}</div>
+          <div><strong>Cajero Responsable:</strong> ${sesion.cajero_nombre}</div>
+          <div><strong>Fecha Apertura:</strong> ${new Date(sesion.fecha_apertura).toLocaleString('es-PY')}</div>
+          <div><strong>Fecha Cierre:</strong> ${sesion.fecha_cierre ? new Date(sesion.fecha_cierre).toLocaleString('es-PY') : '-'}</div>
+        </div>
+
+        <div class="border-top border-bottom py-2 my-2">
+          <strong>DESGLOSE DE INGRESOS Y OPERACIONES:</strong>
+          <div class="d-flex justify-content-between mt-1">
+            <span>(+) Fondo Inicial de Caja:</span>
+            <strong>${API.formatGs(sesion.monto_apertura)}</strong>
+          </div>
+          ${ventas.map(v => `
+            <div class="d-flex justify-content-between">
+              <span>(+) Ventas (${v.metodo_pago.toUpperCase()} - ${v.cantidad} op):</span>
+              <strong>${API.formatGs(v.total)}</strong>
+            </div>
+          `).join('')}
+          <div class="d-flex justify-content-between">
+            <span>(+) Cobros de Créditos Recibidos:</span>
+            <strong>${API.formatGs(cobros.reduce((acc, c) => acc + c.monto_total, 0))}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>(+) Ingresos Extraordinarios:</span>
+            <strong>${API.formatGs(movimientos.filter(m => m.tipo_movimiento === 'ingreso').reduce((acc, m) => acc + m.monto, 0))}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>(-) Egresos / Retiros de Caja:</span>
+            <strong>${API.formatGs(movimientos.filter(m => m.tipo_movimiento === 'egreso').reduce((acc, m) => acc + m.monto, 0))}</strong>
+          </div>
+        </div>
+
+        <div class="py-2">
+          <div class="d-flex justify-content-between">
+            <span>TOTAL ESPERADO EN SISTEMA:</span>
+            <strong>${API.formatGs(sesion.monto_sistema)}</strong>
+          </div>
+          <div class="d-flex justify-content-between fs-6 fw-bold">
+            <span>TOTAL FÍSICO ARQUEADO:</span>
+            <span class="text-primary">${API.formatGs(sesion.monto_cierre_efectivo)}</span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold ${sesion.diferencia === 0 ? 'text-primary' : (sesion.diferencia > 0 ? 'text-success' : 'text-danger')}">
+            <span>DIFERENCIA (FALTANTE/SOBRANTE):</span>
+            <span>${sesion.diferencia > 0 ? '+' : ''}${API.formatGs(sesion.diferencia)}</span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold text-success border-top pt-2 mt-2 fs-6">
+            <span>RECAUDACIÓN A DEPOSITAR:</span>
+            <span>${API.formatGs(sesion.recaudacion_depositar)}</span>
+          </div>
+        </div>
+
+        ${sesion.observaciones ? `<div class="mt-2 small text-muted"><strong>Obs:</strong> ${sesion.observaciones}</div>` : ''}
+
+        <div class="row text-center mt-5 pt-4">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma Cajero</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma Tesorería / Admin</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalComprobanteCierreBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalComprobanteCierre'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar el acta de cierre', 'error');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 13. CARTERA DE CUENTAS POR COBRAR Y COBRANZAS
+// --------------------------------------------------------------------------
+async function cargarCreditos() {
+  try {
+    const estado = document.getElementById('filtroCreditoEstado') ? document.getElementById('filtroCreditoEstado').value : '';
+    
+    // Cargar KPIs
+    const resResumen = await API.get('/creditos/resumen');
+    if (resResumen.success) {
+      const r = resResumen.resumen;
+      if (document.getElementById('kpiCreditoPendiente')) document.getElementById('kpiCreditoPendiente').textContent = API.formatGs(r.total_pendiente);
+      if (document.getElementById('kpiCreditoVencido')) document.getElementById('kpiCreditoVencido').textContent = API.formatGs(r.total_vencido);
+      if (document.getElementById('kpiCreditoCobradoMes')) document.getElementById('kpiCreditoCobradoMes').textContent = API.formatGs(r.total_cobrado_mes);
+      if (document.getElementById('kpiCreditoMorosos')) document.getElementById('kpiCreditoMorosos').textContent = `${r.clientes_morosos} clientes en mora`;
+    }
+
+    // Cargar Lista
+    const resCuentas = await API.get('/creditos', { estado });
+    const tbody = document.getElementById('tablaCreditos');
+    if (!tbody) return;
+
+    if (!resCuentas.success || !resCuentas.cuentas.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">
+            <i class="fa-solid fa-hand-holding-dollar fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0">No se encontraron cuentas por cobrar con el filtro seleccionado.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = resCuentas.cuentas.map(c => {
+      let badgeEstado = '';
+      if (c.estado_calculado === 'vencida') {
+        badgeEstado = `<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Vencida (+${c.dias_atraso}d)</span>`;
+      } else if (c.estado === 'parcial') {
+        badgeEstado = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i> Pago Parcial</span>';
+      } else if (c.estado === 'pagada') {
+        badgeEstado = '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> Pagada</span>';
+      } else {
+        badgeEstado = '<span class="badge bg-primary">Pendiente</span>';
+      }
+
+      return `
+        <tr>
+          <td class="fw-bold">${c.venta_comprobante}</td>
+          <td>
+            <strong>${c.cliente_nombre}</strong><br>
+            <small class="text-muted">RUC/CI: ${c.cliente_ruc}</small>
+          </td>
+          <td><small class="text-muted">${c.cliente_telefono || '-'}</small></td>
+          <td class="text-center"><span class="badge bg-secondary">${c.numero_cuota} / ${c.total_cuotas}</span></td>
+          <td>${new Date(c.fecha_vencimiento).toLocaleDateString('es-PY')}</td>
+          <td>${badgeEstado}</td>
+          <td class="text-end">${API.formatGs(c.monto_cuota)}</td>
+          <td class="text-end fw-bold ${c.saldo_pendiente > 0 ? (c.estado_calculado === 'vencida' ? 'text-danger' : 'text-primary') : 'text-muted'}">
+            ${API.formatGs(c.saldo_pendiente)}
+          </td>
+          <td class="text-center">
+            ${c.saldo_pendiente > 0 ? `
+              <button class="btn btn-sm btn-success py-0 fw-semibold" onclick="abrirModalCobro(${c.id}, ${c.cliente_id}, '${c.cliente_nombre.replace(/'/g, "\\'")}', '${c.venta_comprobante}', ${c.saldo_pendiente})">
+                <i class="fa-solid fa-hand-holding-dollar me-1"></i> Cobrar
+              </button>
+            ` : `
+              <span class="text-success small fw-semibold"><i class="fa-solid fa-circle-check"></i> Cancelado</span>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error al cargar creditos:', err);
+  }
+}
+
+function abrirModalCobro(cuentaId, clienteId, clienteNombre, ventaComp, saldo) {
+  document.getElementById('cobroCuentaId').value = cuentaId;
+  document.getElementById('cobroClienteId').value = clienteId;
+  document.getElementById('cobroClienteNombre').textContent = clienteNombre;
+  document.getElementById('cobroVentaComprobante').textContent = ventaComp;
+  document.getElementById('cobroSaldoPendiente').textContent = API.formatGs(saldo);
+  document.getElementById('cobroMonto').value = saldo;
+  document.getElementById('cobroMonto').max = saldo;
+  document.getElementById('cobroForma').value = 'efectivo';
+  document.getElementById('cobroObs').value = '';
+
+  const modal = new bootstrap.Modal(document.getElementById('modalCobroCredito'));
+  modal.show();
+}
+
+async function guardarCobroCredito(e) {
+  e.preventDefault();
+  const cuentaId = parseInt(document.getElementById('cobroCuentaId').value);
+  const clienteId = parseInt(document.getElementById('cobroClienteId').value);
+  const monto = parseFloat(document.getElementById('cobroMonto').value) || 0;
+  const forma = document.getElementById('cobroForma').value;
+  const obs = document.getElementById('cobroObs').value;
+
+  try {
+    const res = await API.post('/creditos/cobrar', {
+      cliente_id: clienteId,
+      monto_total: monto,
+      forma_cobro: forma,
+      observaciones: obs,
+      cuotas: [
+        { cuenta_cobrar_id: cuentaId, monto_aplicado: monto }
+      ]
+    });
+
+    if (res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalCobroCredito')).hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Cobro Registrado',
+        text: `Se emitió el Recibo Oficial ${res.numeroRecibo} por ${API.formatGs(res.montoTotal)}`,
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir Recibo',
+        cancelButtonText: 'Aceptar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          verReciboOficial(res.cobroId);
+        }
+      });
+      cargarCreditos();
+    }
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
+
+async function verReciboOficial(cobroId) {
+  try {
+    const res = await API.get(`/creditos/recibo/${cobroId}`);
+    if (!res.success) return;
+    const { recibo, detalles } = res;
+
+    const buildCopia = (tipoCopia) => `
+      <div class="border p-3 rounded mb-3 bg-white" style="font-family: monospace; font-size: 13px;">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+          <div>
+            <h6 class="fw-bold mb-0">PANADERÍA Y CONFITERÍA CAPIATÁ</h6>
+            <small class="text-muted">RUC: 80012345-6 | Capiatá - Paraguay</small>
+          </div>
+          <div class="text-end">
+            <span class="badge bg-secondary mb-1">${tipoCopia}</span>
+            <div class="fw-bold fs-6 text-danger">${recibo.numero_recibo}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2 small">
+          <div class="col-8">
+            <strong>Recibimos de:</strong> ${recibo.cliente_nombre}<br>
+            <strong>RUC / CI:</strong> ${recibo.cliente_ruc} | <strong>Tel:</strong> ${recibo.cliente_telefono || '-'}
+          </div>
+          <div class="col-4 text-end">
+            <strong>Fecha:</strong> ${new Date(recibo.fecha_cobro).toLocaleDateString('es-PY')}<br>
+            <strong>Cajero:</strong> ${recibo.cajero_nombre}
+          </div>
+        </div>
+
+        <div class="border-top border-bottom py-2 my-2">
+          <table class="w-100 small">
+            <thead>
+              <tr class="border-bottom">
+                <th>Comprobante</th>
+                <th>Cuota</th>
+                <th class="text-end">Monto Aplicado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${detalles.map(d => `
+                <tr>
+                  <td>${d.venta_comprobante}</td>
+                  <td>Cuota ${d.numero_cuota} de ${d.total_cuotas}</td>
+                  <td class="text-end fw-bold">${API.formatGs(d.monto_aplicado)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div>
+            <small><strong>Forma de Cobro:</strong> ${recibo.forma_cobro.toUpperCase()}</small><br>
+            ${recibo.observaciones ? `<small class="text-muted"><strong>Obs:</strong> ${recibo.observaciones}</small>` : ''}
+          </div>
+          <div class="text-end">
+            <span class="text-muted small">TOTAL RECIBIDO:</span>
+            <div class="fw-bold fs-5 text-success">${API.formatGs(recibo.monto_total)}</div>
+          </div>
+        </div>
+
+        <div class="row text-center mt-4 pt-3">
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma del Cliente</div>
+          </div>
+          <div class="col-6">
+            <div class="border-top pt-1 small">Firma y Sello Cobrador</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const html = `
+      <div class="ticket-print">
+        ${buildCopia('ORIGINAL')}
+        <div class="text-center my-2 text-muted small"> - - - - - - - - - - - - - - - - - - - Cortar aquí - - - - - - - - - - - - - - - - - - - </div>
+        ${buildCopia('DUPLICADO')}
+      </div>
+    `;
+
+    document.getElementById('modalReciboOficialBody').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('modalReciboOficial'));
+    modal.show();
+  } catch (err) {
+    Swal.fire('Error', 'No se pudo cargar el recibo oficial', 'error');
   }
 }
