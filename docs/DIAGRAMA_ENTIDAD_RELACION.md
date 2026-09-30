@@ -3,182 +3,222 @@
 **Proyecto de Tesis - UNIGRAN**  
 **Tesista:** Bruno Matías Báez Medina  
 **Carrera:** Licenciatura en Análisis de Sistemas Informáticos  
+**Total de Tablas Implementadas:** 34 tablas  
 
 ---
 
-## 1. Diagrama Entidad-Relación (Visual en Mermaid)
+## 1. Diagrama Entidad-Relación (Mermaid)
 
 ```mermaid
 erDiagram
 
     %% ==========================================
-    %% MÓDULO: SEGURIDAD Y ACCESO
+    %% MÓDULO: SEGURIDAD Y ACCESOS
     %% ==========================================
-    ROLES {
-        int id PK
-        string nombre
-        string descripcion
-        int estado
-        datetime created_at
-    }
-
     USUARIOS {
         int id PK
-        string username
-        string password
         string nombre
-        string apellido
         string email
+        string password
+        string rol
         string telefono
-        int rol_id FK
         int estado
-        datetime ultimo_acceso
         datetime created_at
     }
 
-    PERMISOS {
-        int id PK
-        string modulo
-        string accion
-        string descripcion
-    }
-
-    ROL_PERMISOS {
-        int id PK
-        int rol_id FK
-        int permiso_id FK
-    }
-
-    AUDITORIA {
+    AUDITORIA_LOGS {
         int id PK
         int usuario_id FK
         string accion
-        string tabla
+        string tabla_afectada
         int registro_id
-        text datos_anteriores
-        text datos_nuevos
-        string ip_address
-        datetime created_at
+        text detalles
+        string ip
+        datetime fecha
     }
 
     %% ==========================================
-    %% MÓDULO: INVENTARIO Y MATERIAS PRIMAS
+    %% MÓDULO: CATÁLOGOS BASE E INVENTARIO
     %% ==========================================
     CATEGORIAS {
         int id PK
         string nombre
         string descripcion
-        int estado
+        string tipo
+    }
+
+    UNIDADES_MEDIDA {
+        int id PK
+        string nombre
+        string simbolo
+    }
+
+    DEPOSITOS {
+        int id PK
+        string nombre
+        string ubicacion
+        string descripcion
+        int es_principal
         datetime created_at
     }
 
     PROVEEDORES {
         int id PK
-        string razon_social
         string ruc
+        string razon_social
+        string contacto_nombre
         string telefono
         string email
         string direccion
-        string contacto_nombre
+        string ciudad
         int estado
         datetime created_at
     }
 
-    INSUMOS {
-        int id PK
-        string codigo
-        string nombre
-        string descripcion
-        string unidad_medida
-        decimal stock_actual
-        decimal stock_minimo
-        decimal costo_unitario
-        int proveedor_id FK
-        int estado
-        datetime created_at
-    }
-
-    %% ==========================================
-    %% MÓDULO: PRODUCTOS Y RECETAS
-    %% ==========================================
     PRODUCTOS {
         int id PK
         string codigo
+        string codigo_barra
         string nombre
         string descripcion
+        string tipo
         int categoria_id FK
+        int unidad_id FK
+        decimal stock_minimo
+        decimal stock_maximo
         decimal precio_costo
         decimal precio_venta
-        decimal stock_actual
-        decimal stock_minimo
-        string unidad_medida
-        string imagen
+        decimal iva
         int estado
         datetime created_at
     }
 
-    RECETAS {
+    STOCK_DEPOSITO {
         int id PK
         int producto_id FK
+        int deposito_id FK
+        decimal cantidad
+    }
+
+    LOTES {
+        int id PK
+        int producto_id FK
+        int deposito_id FK
+        string codigo_lote
+        decimal cantidad_inicial
+        decimal cantidad_actual
+        date fecha_elaboracion
+        date fecha_vencimiento
+        decimal precio_compra
+        string estado
+        datetime created_at
+    }
+
+    %% ==========================================
+    %% MÓDULO: FÓRMULAS Y PRODUCCIÓN
+    %% ==========================================
+    RECETAS {
+        int id PK
+        string codigo
         string nombre
         string descripcion
-        decimal rendimiento
-        string tiempo_preparacion
+        int producto_terminado_id FK
+        decimal rendimiento_unidades
+        int tiempo_estimado_min
+        decimal costo_estimado
         int estado
         datetime created_at
     }
 
-    RECETA_DETALLES {
+    RECETAS_DETALLES {
         int id PK
         int receta_id FK
         int insumo_id FK
-        decimal cantidad
-        string unidad_medida
-        decimal costo_calculado
+        decimal cantidad_requerida
     }
 
-    %% ==========================================
-    %% MÓDULO: PRODUCCIÓN
-    %% ==========================================
-    ORDENES_PRODUCCION {
+    PRODUCCIONES {
         int id PK
-        string numero_orden
-        int producto_id FK
+        string codigo
         int receta_id FK
+        int producto_terminado_id FK
+        int deposito_origen_id FK
+        int deposito_destino_id FK
         decimal cantidad_planificada
-        decimal cantidad_producida
+        decimal cantidad_obtenida
+        decimal merma_estimada
+        decimal costo_total
         string estado
-        date fecha_inicio
-        date fecha_fin
         int usuario_id FK
+        date fecha_produccion
         text observaciones
         datetime created_at
     }
 
-    DETALLE_PRODUCCION {
-        int id PK
-        int orden_produccion_id FK
-        int insumo_id FK
-        decimal cantidad_utilizada
-        decimal costo_unitario
-        decimal costo_total
-    }
-
     %% ==========================================
-    %% MÓDULO: CLIENTES Y CAJA
+    %% MÓDULO: LOGÍSTICA, MERMAS Y KARDEX
     %% ==========================================
-    CLIENTES {
+    TRANSFERENCIAS {
         int id PK
-        string nombre
-        string apellido
-        string ruc_cedula
-        string telefono
-        string email
-        string direccion
-        int estado
+        string codigo
+        int deposito_origen_id FK
+        int deposito_destino_id FK
+        int usuario_id FK
+        date fecha
+        string motivo
+        string estado
         datetime created_at
     }
 
+    TRANSFERENCIAS_DETALLES {
+        int id PK
+        int transferencia_id FK
+        int producto_id FK
+        int lote_id
+        decimal cantidad
+    }
+
+    AJUSTES_STOCK {
+        int id PK
+        string codigo
+        int deposito_id FK
+        int usuario_id FK
+        date fecha
+        string tipo_ajuste
+        string motivo
+        text observaciones
+        datetime created_at
+    }
+
+    AJUSTES_DETALLES {
+        int id PK
+        int ajuste_id FK
+        int producto_id FK
+        decimal cantidad_anterior
+        decimal cantidad_ajustada
+        decimal diferencia
+    }
+
+    KARDEX {
+        int id PK
+        datetime fecha
+        int producto_id FK
+        int deposito_id FK
+        string tipo_movimiento
+        int referencia_id
+        string referencia_documento
+        decimal cantidad_entrada
+        decimal cantidad_salida
+        decimal saldo_resultante
+        decimal costo_unitario
+        decimal costo_total
+        int usuario_id FK
+        text observaciones
+    }
+
+    %% ==========================================
+    %% MÓDULO: CAJA, ARQUEO Y COBRANZAS
+    %% ==========================================
     CAJAS {
         int id PK
         string nombre
@@ -195,8 +235,10 @@ erDiagram
         datetime fecha_apertura
         datetime fecha_cierre
         decimal monto_apertura
-        decimal monto_cierre
+        decimal monto_sistema
+        decimal monto_cierre_efectivo
         decimal diferencia
+        decimal recaudacion_depositar
         string estado
         text observaciones
     }
@@ -205,96 +247,179 @@ erDiagram
         int id PK
         int sesion_caja_id FK
         string tipo_movimiento
-        decimal monto
         string concepto
+        decimal monto
         int usuario_id FK
         datetime created_at
     }
 
-    %% ==========================================
-    %% MÓDULO: VENTAS Y FACTURACIÓN
-    %% ==========================================
-    VENTAS {
+    CUENTAS_COBRAR {
         int id PK
-        string numero_factura
-        string timbrado
-        datetime fecha_venta
+        int venta_id FK
         int cliente_id FK
-        int usuario_id FK
-        int sesion_caja_id FK
-        string forma_pago
-        string condicion_venta
-        decimal subtotal_exenta
-        decimal subtotal_iva5
-        decimal subtotal_iva10
-        decimal total_iva5
-        decimal total_iva10
-        decimal total_iva
-        decimal total
+        int numero_cuota
+        int total_cuotas
+        decimal monto_cuota
+        decimal saldo_pendiente
+        date fecha_vencimiento
         string estado
         datetime created_at
     }
 
-    DETALLE_VENTAS {
+    COBROS {
+        int id PK
+        string numero_recibo
+        int cliente_id FK
+        int sesion_caja_id FK
+        int usuario_id FK
+        datetime fecha_cobro
+        decimal monto_total
+        string forma_cobro
+        text observaciones
+        datetime created_at
+    }
+
+    COBROS_DETALLES {
+        int id PK
+        int cobro_id FK
+        int cuenta_cobrar_id FK
+        decimal monto_aplicado
+    }
+
+    %% ==========================================
+    %% MÓDULO: VENTAS Y CLIENTES
+    %% ==========================================
+    CLIENTES {
+        int id PK
+        string ruc_ci
+        string nombre_razon
+        string telefono
+        string email
+        string direccion
+        datetime created_at
+    }
+
+    VENTAS {
+        int id PK
+        string numero_comprobante
+        string tipo_comprobante
+        int cliente_id FK
+        int usuario_id FK
+        int deposito_id FK
+        int sesion_caja_id FK
+        string condicion_venta
+        decimal subtotal
+        decimal iva_5
+        decimal iva_10
+        decimal total
+        string metodo_pago
+        decimal monto_recibido
+        decimal vuelto
+        string estado
+        datetime created_at
+    }
+
+    VENTAS_DETALLES {
         int id PK
         int venta_id FK
         int producto_id FK
         decimal cantidad
         decimal precio_unitario
-        decimal porcentaje_iva
-        decimal monto_iva
+        decimal iva_tipo
         decimal subtotal
     }
 
     %% ==========================================
-    %% MÓDULO: COMPRAS
+    %% MÓDULO: CICLO COMPLETO DE COMPRAS
     %% ==========================================
-    COMPRAS {
-        int id PK
-        string numero_factura
-        string timbrado
-        date fecha_compra
-        int proveedor_id FK
-        int usuario_id FK
-        string condicion_compra
-        decimal subtotal_exenta
-        decimal subtotal_iva5
-        decimal subtotal_iva10
-        decimal total_iva
-        decimal total
-        string estado
-        datetime created_at
-    }
-
-    DETALLE_COMPRAS {
-        int id PK
-        int compra_id FK
-        int insumo_id FK
-        decimal cantidad
-        decimal precio_unitario
-        decimal subtotal
-    }
-
-    %% ==========================================
-    %% MÓDULO: PEDIDOS
-    %% ==========================================
-    PEDIDOS {
+    PEDIDOS_COMPRAS {
         int id PK
         string numero_pedido
-        int cliente_id FK
         int usuario_id FK
-        datetime fecha_pedido
-        datetime fecha_entrega
-        decimal total
-        decimal saldo_pendiente
+        date fecha_pedido
+        date fecha_requerida
+        string prioridad
         string estado
         text observaciones
         datetime created_at
     }
 
-    DETALLE_PEDIDOS {
+    PEDIDOS_COMPRAS_DETALLES {
         int id PK
-        int pedido_id FK
+        int pedido_compra_id FK
+        int producto_id FK
+        decimal cantidad_solicitada
+        text observaciones
+    }
+
+    ORDENES_COMPRAS {
+        int id PK
+        string numero_orden
+        int pedido_compra_id FK
+        int proveedor_id FK
+        int usuario_id FK
+        date fecha_orden
+        date fecha_entrega_esperada
+        string condicion_pago
+        decimal subtotal
+        decimal total
+        string estado
+        text observaciones
+        datetime created_at
+    }
+
+    ORDENES_COMPRAS_DETALLES {
+        int id PK
+        int orden_compra_id FK
+        int producto_id FK
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    COMPRAS {
+        int id PK
+        int proveedor_id FK
+        int deposito_id FK
+        int orden_compra_id FK
+        int usuario_id FK
+        string numero_factura
+        string timbrado
+        date fecha_compra
+        decimal total
+        string condicion
+        text observaciones
+        datetime created_at
+    }
+
+    COMPRAS_DETALLES {
+        int id PK
+        int compra_id FK
+        int producto_id FK
+        string codigo_lote
+        date fecha_vencimiento
+        decimal cantidad
+        decimal precio_unitario
+        decimal subtotal
+    }
+
+    NOTAS_CREDITO_COMPRAS {
+        int id PK
+        string numero_nota
+        string timbrado
+        int compra_id FK
+        int proveedor_id FK
+        int usuario_id FK
+        date fecha_emision
+        string motivo
+        decimal total
+        text observaciones
+        datetime created_at
+    }
+
+    NOTAS_CREDITO_COMPRAS_DETALLES {
+        int id PK
+        int nota_credito_id FK
         int producto_id FK
         decimal cantidad
         decimal precio_unitario
@@ -304,81 +429,87 @@ erDiagram
     %% ==========================================
     %% RELACIONES ENTRE TABLAS
     %% ==========================================
-
-    %% Seguridad
-    ROLES ||--o{ USUARIOS : "asigna a"
-    ROLES ||--o{ ROL_PERMISOS : "contiene"
-    PERMISOS ||--o{ ROL_PERMISOS : "se asocia en"
-    USUARIOS ||--o{ AUDITORIA : "registra acciones"
-
-    %% Inventario & Productos
+    USUARIOS ||--o{ AUDITORIA_LOGS : "registra"
     CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
-    PROVEEDORES ||--o{ INSUMOS : "suministra"
+    UNIDADES_MEDIDA ||--o{ PRODUCTOS : "mide"
+    DEPOSITOS ||--o{ STOCK_DEPOSITO : "almacena"
+    PRODUCTOS ||--o{ STOCK_DEPOSITO : "tiene existencia"
+    PRODUCTOS ||--o{ LOTES : "controla lotes"
+    DEPOSITOS ||--o{ LOTES : "ubica lotes"
 
-    %% Recetas
-    PRODUCTOS ||--o{ RECETAS : "tiene fórmula"
-    RECETAS ||--|{ RECETA_DETALLES : "se compone de"
-    INSUMOS ||--o{ RECETA_DETALLES : "es ingrediente en"
+    PRODUCTOS ||--o{ RECETAS : "posee formula"
+    RECETAS ||--|{ RECETAS_DETALLES : "contiene ingredientes"
+    PRODUCTOS ||--o{ RECETAS_DETALLES : "usado como insumo"
+    RECETAS ||--o{ PRODUCCIONES : "guia elaboracion"
+    USUARIOS ||--o{ PRODUCCIONES : "supervisa"
 
-    %% Producción
-    PRODUCTOS ||--o{ ORDENES_PRODUCCION : "se elabora en"
-    RECETAS ||--o{ ORDENES_PRODUCCION : "sigue fórmula"
-    USUARIOS ||--o{ ORDENES_PRODUCCION : "supervisa"
-    ORDENES_PRODUCCION ||--|{ DETALLE_PRODUCCION : "consume"
-    INSUMOS ||--o{ DETALLE_PRODUCCION : "se gasta en"
+    DEPOSITOS ||--o{ TRANSFERENCIAS : "origen / destino"
+    TRANSFERENCIAS ||--|{ TRANSFERENCIAS_DETALLES : "detalla items"
+    AJUSTES_STOCK ||--|{ AJUSTES_DETALLES : "detalla diferencias"
+    PRODUCTOS ||--o{ KARDEX : "audita movimientos"
 
-    %% Caja
-    CAJAS ||--o{ SESIONES_CAJA : "se abre en"
-    USUARIOS ||--o{ SESIONES_CAJA : "opera"
-    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "registra movimientos"
-    USUARIOS ||--o{ MOVIMIENTOS_CAJA : "autoriza"
+    CAJAS ||--o{ SESIONES_CAJA : "opera en"
+    USUARIOS ||--o{ SESIONES_CAJA : "abre/cierra turno"
+    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "registra extra"
+    SESIONES_CAJA ||--o{ VENTAS : "recauda efectivo"
+    SESIONES_CAJA ||--o{ COBROS : "ingresa cobros"
 
-    %% Ventas
-    CLIENTES ||--o{ VENTAS : "compra"
-    USUARIOS ||--o{ VENTAS : "factura"
-    SESIONES_CAJA ||--o{ VENTAS : "cobra en"
-    VENTAS ||--|{ DETALLE_VENTAS : "contiene items"
-    PRODUCTOS ||--o{ DETALLE_VENTAS : "se vende en"
+    CLIENTES ||--o{ VENTAS : "factura a"
+    VENTAS ||--|{ VENTAS_DETALLES : "contiene lineas"
+    VENTAS ||--o{ CUENTAS_COBRAR : "origina deuda"
+    CLIENTES ||--o{ CUENTAS_COBRAR : "adeuda"
+    CUENTAS_COBRAR ||--o{ COBROS_DETALLES : "amortiza cuota"
+    COBROS ||--|{ COBROS_DETALLES : "discrimina pagos"
 
-    %% Compras
-    PROVEEDORES ||--o{ COMPRAS : "provee"
-    USUARIOS ||--o{ COMPRAS : "registra compra"
-    COMPRAS ||--|{ DETALLE_COMPRAS : "detalla items"
-    INSUMOS ||--o{ DETALLE_COMPRAS : "se adquiere en"
-
-    %% Pedidos
-    CLIENTES ||--o{ PEDIDOS : "solicita"
-    USUARIOS ||--o{ PEDIDOS : "toma pedido"
-    PEDIDOS ||--|{ DETALLE_PEDIDOS : "incluye"
-    PRODUCTOS ||--o{ DETALLE_PEDIDOS : "se encarga en"
+    USUARIOS ||--o{ PEDIDOS_COMPRAS : "solicita insumos"
+    PEDIDOS_COMPRAS ||--|{ PEDIDOS_COMPRAS_DETALLES : "solicita renglones"
+    PEDIDOS_COMPRAS ||--o{ ORDENES_COMPRAS : "origina orden"
+    PROVEEDORES ||--o{ ORDENES_COMPRAS : "recibe orden"
+    ORDENES_COMPRAS ||--|{ ORDENES_COMPRAS_DETALLES : "estipula items"
+    ORDENES_COMPRAS ||--o{ COMPRAS : "se factura en"
+    PROVEEDORES ||--o{ COMPRAS : "emite factura"
+    COMPRAS ||--|{ COMPRAS_DETALLES : "detalla ingreso"
+    COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "ajusta o devuelve"
+    NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "detalla devolucion"
 ```
 
 ---
 
-## 2. Diccionario de Entidades del Sistema
+## 2. Diccionario de Entidades del Sistema (34 Tablas)
 
 | Módulo | Entidad | Descripción |
 | :--- | :--- | :--- |
-| **Seguridad** | `ROLES` | Define los perfiles de usuario (Administrador, Panadero, Cajero, etc.). |
-| **Seguridad** | `USUARIOS` | Operadores y personal con credenciales de acceso al software. |
-| **Seguridad** | `PERMISOS` | Catálogo de privilegios granulares por módulo. |
-| **Seguridad** | `ROL_PERMISOS` | Tabla asociativa de privilegios por cada rol. |
-| **Seguridad** | `AUDITORIA` | Registro de trazabilidad y cambios de cada tabla. |
-| **Inventario** | `CATEGORIAS` | Clasificación de productos terminados. |
-| **Inventario** | `PROVEEDORES` | Personas físicas y jurídicas proveedoras de materia prima. |
-| **Inventario** | `INSUMOS` | Materias primas pesables y contables (harina, levadura, etc.). |
-| **Productos** | `PRODUCTOS` | Productos elaborados listos para mostrador o venta. |
-| **Recetas** | `RECETAS` | Ficha técnica de formulación por producto. |
-| **Recetas** | `RECETA_DETALLES`| Relación insumo-cantidad necesaria para la receta. |
-| **Producción** | `ORDENES_PRODUCCION`| Planificación y lote de horneado/elaboración. |
-| **Producción** | `DETALLE_PRODUCCION`| Insumos reales descontados de stock durante el lote. |
-| **Caja** | `CAJAS` | Puntos físicos y timbrado de facturación. |
-| **Caja** | `SESIONES_CAJA` | Control de turno, arqueo, saldo inicial y cierre. |
-| **Caja** | `MOVIMIENTOS_CAJA` | Entradas/salidas extraordinarias de dinero. |
-| **Ventas** | `VENTAS` | Cabecera del comprobante fiscal o ticket con IVA discriminado. |
-| **Ventas** | `DETALLE_VENTAS` | Renglones de venta y cálculo por tasa impositiva (10%, 5%, Exenta). |
-| **Compras** | `COMPRAS` | Cabecera de factura de compra recibida del proveedor. |
-| **Compras** | `DETALLE_COMPRAS`| Renglones de insumos comprados con actualización de stock y costo. |
-| **Pedidos** | `PEDIDOS` | Encargos anticipados con seña y fecha programada de entrega. |
-| **Pedidos** | `DETALLE_PEDIDOS` | Productos solicitados en el encargo. |
-| **Clientes** | `CLIENTES` | Clientes registrados con RUC o Cédula para facturación. |
+| **Seguridad** | `usuarios` | Cuentas de operadores, contraseñas encriptadas (bcrypt) y roles. |
+| **Seguridad** | `auditoria_logs` | Trazabilidad completa de operaciones, cambios, usuario e IP. |
+| **Catálogos** | `categorias` | Clasificación de insumos y productos elaborados. |
+| **Catálogos** | `unidades_medida` | Unidades (Kg, Gr, Litros, Unidades, etc.). |
+| **Catálogos** | `depositos` | Depósito central, mostrador y sucursales. |
+| **Catálogos** | `proveedores` | Datos de empresas proveedoras (RUC, razón social, contacto). |
+| **Inventario** | `productos` | Materias primas y productos de panadería/confitería. |
+| **Inventario** | `stock_deposito` | Existencias actuales por producto en cada depósito. |
+| **Inventario** | `lotes` | Control de partidas con fechas de elaboración y vencimiento (FEFO). |
+| **Fórmulas** | `recetas` | Fichas técnicas de panadería con rendimiento y costo estándar. |
+| **Fórmulas** | `recetas_detalles`| Insumos y cantidades requeridas por fórmula. |
+| **Producción**| `producciones` | Lotes horneados, cantidad producida, merma y costo real. |
+| **Logística** | `transferencias` | Traslado formal de mercadería entre depósitos y mostrador. |
+| **Logística** | `transferencias_detalles` | Ítems y cantidades transferidas. |
+| **Ajustes** | `ajustes_stock` | Recuentos físicos, mermas, pérdidas o roturas. |
+| **Ajustes** | `ajustes_detalles` | Diferencias y cantidades ajustadas. |
+| **Kardex** | `kardex` | Libro formal de entradas, salidas y saldos valorizados. |
+| **Caja** | `cajas` | Puntos físicos y terminales de expedición. |
+| **Caja** | `sesiones_caja` | Apertura con fondo inicial, arqueo físico, diferencia y recaudación a depositar. |
+| **Caja** | `movimientos_caja` | Ingresos y egresos extraordinarios de efectivo en el turno. |
+| **Créditos** | `cuentas_cobrar` | Deudas de clientes por ventas a plazo con vencimiento y saldo pendiente. |
+| **Créditos** | `cobros` | Recibos Oficiales de Cobranza emitidos (`REC-XXXXXXX`). |
+| **Créditos** | `cobros_detalles` | Discriminación de cuotas amortizadas por recibo. |
+| **Clientes** | `clientes` | Padrón de clientes registrados con RUC o Cédula. |
+| **Ventas** | `ventas` | Cabecera de facturas o tickets (contado/crédito, IVA discriminado). |
+| **Ventas** | `ventas_detalles` | Renglones de productos vendidos y subtotales. |
+| **Compras** | `pedidos_compras` | Solicitudes internas de insumos de panadería con prioridad. |
+| **Compras** | `pedidos_compras_detalles` | Insumos y cantidades solicitadas en el pedido interno. |
+| **Compras** | `ordenes_compras` | Órdenes de compra oficiales autorizadas y enviadas al proveedor. |
+| **Compras** | `ordenes_compras_detalles` | Precios acordados, cantidades y subtotales de la orden. |
+| **Compras** | `compras` | Facturas de compra registradas con timbrado e ingreso de stock. |
+| **Compras** | `compras_detalles` | Renglones de compras con asignación de lote y fecha de vencimiento. |
+| **Compras** | `notas_credito_compras` | Notas de crédito recibidas de proveedores por devolución o descuento. |
+| **Compras** | `notas_credito_compras_detalles` | Ítems devueltos con descuento de inventario y salida en Kardex. |

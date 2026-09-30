@@ -99,7 +99,7 @@
 
   <div class="header">
     <div>
-      <h1>Diagrama Entidad-Relación (DER)</h1>
+      <h1>Diagrama Entidad-Relación (DER) - 34 Tablas</h1>
       <p>Sistema de Gestión para Panadería y Confitería | Tesis UNIGRAN - Bruno Báez</p>
     </div>
     <div class="toolbar">
@@ -113,310 +113,317 @@
     <div class="mermaid" id="der-mermaid">
 erDiagram
 
-    ROLES {
-        int id PK
-        string nombre
-        string descripcion
-        int estado
-        datetime created_at
-    }
-
     USUARIOS {
         int id PK
-        string username
-        string password
         string nombre
-        string apellido
         string email
-        string telefono
-        int rol_id FK
-        int estado
-        datetime ultimo_acceso
-        datetime created_at
+        string rol
     }
 
-    PERMISOS {
-        int id PK
-        string modulo
-        string accion
-        string descripcion
-    }
-
-    ROL_PERMISOS {
-        int id PK
-        int rol_id FK
-        int permiso_id FK
-    }
-
-    AUDITORIA {
+    AUDITORIA_LOGS {
         int id PK
         int usuario_id FK
         string accion
-        string tabla
-        int registro_id
-        text datos_anteriores
-        text datos_nuevos
-        string ip_address
-        datetime created_at
+        string tabla_afectada
     }
 
     CATEGORIAS {
         int id PK
         string nombre
-        string descripcion
-        int estado
-        datetime created_at
+        string tipo
+    }
+
+    UNIDADES_MEDIDA {
+        int id PK
+        string nombre
+        string simbolo
+    }
+
+    DEPOSITOS {
+        int id PK
+        string nombre
+        int es_principal
     }
 
     PROVEEDORES {
         int id PK
-        string razon_social
         string ruc
-        string telefono
-        string email
-        string direccion
-        string contacto_nombre
-        int estado
-        datetime created_at
-    }
-
-    INSUMOS {
-        int id PK
-        string codigo
-        string nombre
-        string descripcion
-        string unidad_medida
-        decimal stock_actual
-        decimal stock_minimo
-        decimal costo_unitario
-        int proveedor_id FK
-        int estado
-        datetime created_at
+        string razon_social
     }
 
     PRODUCTOS {
         int id PK
         string codigo
         string nombre
-        string descripcion
+        string tipo
         int categoria_id FK
+        int unidad_id FK
         decimal precio_costo
         decimal precio_venta
-        decimal stock_actual
-        decimal stock_minimo
-        string unidad_medida
-        string imagen
-        int estado
-        datetime created_at
+    }
+
+    STOCK_DEPOSITO {
+        int id PK
+        int producto_id FK
+        int deposito_id FK
+        decimal cantidad
+    }
+
+    LOTES {
+        int id PK
+        int producto_id FK
+        int deposito_id FK
+        string codigo_lote
+        decimal cantidad_actual
+        date fecha_vencimiento
     }
 
     RECETAS {
         int id PK
-        int producto_id FK
+        string codigo
         string nombre
-        string descripcion
-        decimal rendimiento
-        string tiempo_preparacion
-        int estado
-        datetime created_at
+        int producto_terminado_id FK
+        decimal rendimiento_unidades
     }
 
-    RECETA_DETALLES {
+    RECETAS_DETALLES {
         int id PK
         int receta_id FK
         int insumo_id FK
-        decimal cantidad
-        string unidad_medida
-        decimal costo_calculado
+        decimal cantidad_requerida
     }
 
-    ORDENES_PRODUCCION {
+    PRODUCCIONES {
         int id PK
-        string numero_orden
-        int producto_id FK
+        string codigo
         int receta_id FK
-        decimal cantidad_planificada
-        decimal cantidad_producida
-        string estado
-        date fecha_inicio
-        date fecha_fin
+        int producto_terminado_id FK
+        int deposito_origen_id FK
+        int deposito_destino_id FK
+        decimal cantidad_obtenida
         int usuario_id FK
-        text observaciones
-        datetime created_at
     }
 
-    DETALLE_PRODUCCION {
+    TRANSFERENCIAS {
         int id PK
-        int orden_produccion_id FK
-        int insumo_id FK
-        decimal cantidad_utilizada
-        decimal costo_unitario
-        decimal costo_total
+        string codigo
+        int deposito_origen_id FK
+        int deposito_destino_id FK
+        int usuario_id FK
     }
 
-    CLIENTES {
+    TRANSFERENCIAS_DETALLES {
         int id PK
-        string nombre
-        string apellido
-        string ruc_cedula
-        string telefono
-        string email
-        string direccion
-        int estado
-        datetime created_at
+        int transferencia_id FK
+        int producto_id FK
+        decimal cantidad
+    }
+
+    AJUSTES_STOCK {
+        int id PK
+        string codigo
+        int deposito_id FK
+        int usuario_id FK
+        string tipo_ajuste
+    }
+
+    AJUSTES_DETALLES {
+        int id PK
+        int ajuste_id FK
+        int producto_id FK
+        decimal diferencia
+    }
+
+    KARDEX {
+        int id PK
+        datetime fecha
+        int producto_id FK
+        int deposito_id FK
+        string tipo_movimiento
+        decimal saldo_resultante
     }
 
     CAJAS {
         int id PK
         string nombre
         string punto_expedicion
-        string establecimiento
-        int estado
-        datetime created_at
     }
 
     SESIONES_CAJA {
         int id PK
         int caja_id FK
         int usuario_id FK
-        datetime fecha_apertura
-        datetime fecha_cierre
         decimal monto_apertura
-        decimal monto_cierre
+        decimal monto_sistema
+        decimal monto_cierre_efectivo
         decimal diferencia
+        decimal recaudacion_depositar
         string estado
-        text observaciones
     }
 
     MOVIMIENTOS_CAJA {
         int id PK
         int sesion_caja_id FK
         string tipo_movimiento
-        decimal monto
         string concepto
-        int usuario_id FK
-        datetime created_at
+        decimal monto
+    }
+
+    CUENTAS_COBRAR {
+        int id PK
+        int venta_id FK
+        int cliente_id FK
+        decimal monto_cuota
+        decimal saldo_pendiente
+        date fecha_vencimiento
+        string estado
+    }
+
+    COBROS {
+        int id PK
+        string numero_recibo
+        int cliente_id FK
+        int sesion_caja_id FK
+        decimal monto_total
+        string forma_cobro
+    }
+
+    COBROS_DETALLES {
+        int id PK
+        int cobro_id FK
+        int cuenta_cobrar_id FK
+        decimal monto_aplicado
+    }
+
+    CLIENTES {
+        int id PK
+        string ruc_ci
+        string nombre_razon
     }
 
     VENTAS {
         int id PK
-        string numero_factura
-        string timbrado
-        datetime fecha_venta
+        string numero_comprobante
         int cliente_id FK
         int usuario_id FK
         int sesion_caja_id FK
-        string forma_pago
         string condicion_venta
-        decimal subtotal_exenta
-        decimal subtotal_iva5
-        decimal subtotal_iva10
-        decimal total_iva5
-        decimal total_iva10
-        decimal total_iva
         decimal total
-        string estado
-        datetime created_at
+        string metodo_pago
     }
 
-    DETALLE_VENTAS {
+    VENTAS_DETALLES {
         int id PK
         int venta_id FK
         int producto_id FK
         decimal cantidad
-        decimal precio_unitario
-        decimal porcentaje_iva
-        decimal monto_iva
+        decimal subtotal
+    }
+
+    PEDIDOS_COMPRAS {
+        int id PK
+        string numero_pedido
+        int usuario_id FK
+        date fecha_pedido
+        string prioridad
+        string estado
+    }
+
+    PEDIDOS_COMPRAS_DETALLES {
+        int id PK
+        int pedido_compra_id FK
+        int producto_id FK
+        decimal cantidad_solicitada
+    }
+
+    ORDENES_COMPRAS {
+        int id PK
+        string numero_orden
+        int pedido_compra_id FK
+        int proveedor_id FK
+        int usuario_id FK
+        decimal total
+        string estado
+    }
+
+    ORDENES_COMPRAS_DETALLES {
+        int id PK
+        int orden_compra_id FK
+        int producto_id FK
+        decimal cantidad
         decimal subtotal
     }
 
     COMPRAS {
         int id PK
-        string numero_factura
-        string timbrado
-        date fecha_compra
         int proveedor_id FK
-        int usuario_id FK
-        string condicion_compra
-        decimal subtotal_exenta
-        decimal subtotal_iva5
-        decimal subtotal_iva10
-        decimal total_iva
+        int deposito_id FK
+        int orden_compra_id FK
+        string numero_factura
         decimal total
-        string estado
-        datetime created_at
     }
 
-    DETALLE_COMPRAS {
+    COMPRAS_DETALLES {
         int id PK
         int compra_id FK
-        int insumo_id FK
-        decimal cantidad
-        decimal precio_unitario
-        decimal subtotal
-    }
-
-    PEDIDOS {
-        int id PK
-        string numero_pedido
-        int cliente_id FK
-        int usuario_id FK
-        datetime fecha_pedido
-        datetime fecha_entrega
-        decimal total
-        decimal saldo_pendiente
-        string estado
-        text observaciones
-        datetime created_at
-    }
-
-    DETALLE_PEDIDOS {
-        int id PK
-        int pedido_id FK
         int producto_id FK
         decimal cantidad
-        decimal precio_unitario
         decimal subtotal
     }
 
-    ROLES ||--o{ USUARIOS : "asigna a"
-    ROLES ||--o{ ROL_PERMISOS : "contiene"
-    PERMISOS ||--o{ ROL_PERMISOS : "se asocia en"
-    USUARIOS ||--o{ AUDITORIA : "registra acciones"
+    NOTAS_CREDITO_COMPRAS {
+        int id PK
+        string numero_nota
+        int compra_id FK
+        int proveedor_id FK
+        decimal total
+        string motivo
+    }
 
+    NOTAS_CREDITO_COMPRAS_DETALLES {
+        int id PK
+        int nota_credito_id FK
+        int producto_id FK
+        decimal cantidad
+        decimal subtotal
+    }
+
+    USUARIOS ||--o{ AUDITORIA_LOGS : "registra"
     CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
-    PROVEEDORES ||--o{ INSUMOS : "suministra"
+    UNIDADES_MEDIDA ||--o{ PRODUCTOS : "mide"
+    DEPOSITOS ||--o{ STOCK_DEPOSITO : "almacena"
+    PRODUCTOS ||--o{ STOCK_DEPOSITO : "stock"
+    PRODUCTOS ||--o{ LOTES : "lotes"
 
-    PRODUCTOS ||--o{ RECETAS : "tiene formula"
-    RECETAS ||--|{ RECETA_DETALLES : "se compone de"
-    INSUMOS ||--o{ RECETA_DETALLES : "es ingrediente"
+    PRODUCTOS ||--o{ RECETAS : "formula"
+    RECETAS ||--|{ RECETAS_DETALLES : "ingredientes"
+    RECETAS ||--o{ PRODUCCIONES : "elaboracion"
 
-    PRODUCTOS ||--o{ ORDENES_PRODUCCION : "se elabora en"
-    RECETAS ||--o{ ORDENES_PRODUCCION : "sigue formula"
-    USUARIOS ||--o{ ORDENES_PRODUCCION : "supervisa"
-    ORDENES_PRODUCCION ||--|{ DETALLE_PRODUCCION : "consume"
-    INSUMOS ||--o{ DETALLE_PRODUCCION : "se gasta en"
+    DEPOSITOS ||--o{ TRANSFERENCIAS : "transferencia"
+    TRANSFERENCIAS ||--|{ TRANSFERENCIAS_DETALLES : "items"
+    AJUSTES_STOCK ||--|{ AJUSTES_DETALLES : "diferencias"
+    PRODUCTOS ||--o{ KARDEX : "movimientos"
 
-    CAJAS ||--o{ SESIONES_CAJA : "se abre en"
-    USUARIOS ||--o{ SESIONES_CAJA : "opera"
-    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "registra movimientos"
-    USUARIOS ||--o{ MOVIMIENTOS_CAJA : "autoriza"
+    CAJAS ||--o{ SESIONES_CAJA : "caja"
+    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "movimientos"
+    SESIONES_CAJA ||--o{ VENTAS : "recauda"
+    SESIONES_CAJA ||--o{ COBROS : "cobranzas"
 
-    CLIENTES ||--o{ VENTAS : "compra"
-    USUARIOS ||--o{ VENTAS : "factura"
-    SESIONES_CAJA ||--o{ VENTAS : "cobra en"
-    VENTAS ||--|{ DETALLE_VENTAS : "contiene items"
-    PRODUCTOS ||--o{ DETALLE_VENTAS : "se vende en"
+    CLIENTES ||--o{ VENTAS : "factura"
+    VENTAS ||--|{ VENTAS_DETALLES : "items"
+    VENTAS ||--o{ CUENTAS_COBRAR : "credito"
+    CUENTAS_COBRAR ||--o{ COBROS_DETALLES : "cuota"
+    COBROS ||--|{ COBROS_DETALLES : "recibo"
 
-    PROVEEDORES ||--o{ COMPRAS : "provee"
-    USUARIOS ||--o{ COMPRAS : "registra compra"
-    COMPRAS ||--|{ DETALLE_COMPRAS : "detalla items"
-    INSUMOS ||--o{ DETALLE_COMPRAS : "se adquiere en"
-
-    CLIENTES ||--o{ PEDIDOS : "solicita"
-    USUARIOS ||--o{ PEDIDOS : "toma pedido"
-    PEDIDOS ||--|{ DETALLE_PEDIDOS : "incluye"
-    PRODUCTOS ||--o{ DETALLE_PEDIDOS : "se encarga en"
+    PEDIDOS_COMPRAS ||--|{ PEDIDOS_COMPRAS_DETALLES : "solicitud"
+    PEDIDOS_COMPRAS ||--o{ ORDENES_COMPRAS : "origen"
+    PROVEEDORES ||--o{ ORDENES_COMPRAS : "provee"
+    ORDENES_COMPRAS ||--|{ ORDENES_COMPRAS_DETALLES : "renglones"
+    ORDENES_COMPRAS ||--o{ COMPRAS : "recepcion"
+    PROVEEDORES ||--o{ COMPRAS : "factura"
+    COMPRAS ||--|{ COMPRAS_DETALLES : "lineas"
+    COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "ajuste"
+    NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "devolucion"
     </div>
   </div>
 
@@ -450,7 +457,7 @@ erDiagram
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "Diagrama_Entidad_Relacion_Panaderia.svg";
+      a.download = "Diagrama_Entidad_Relacion_Panaderia_34Tablas.svg";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -476,11 +483,10 @@ erDiagram
 
       img.onload = function() {
         const canvas = document.createElement("canvas");
-        // Multiplicador 2x para resolución nítida en tesis
         const scale = 2;
         const bbox = svg.getBoundingClientRect();
-        canvas.width = (bbox.width || 2000) * scale;
-        canvas.height = (bbox.height || 1800) * scale;
+        canvas.width = (bbox.width || 2400) * scale;
+        canvas.height = (bbox.height || 2200) * scale;
 
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#ffffff";
@@ -493,7 +499,7 @@ erDiagram
         const pngUrl = canvas.toDataURL("image/png");
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = "Diagrama_Entidad_Relacion_Panaderia.png";
+        a.download = "Diagrama_Entidad_Relacion_Panaderia_34Tablas.png";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
