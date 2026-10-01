@@ -1,0 +1,17 @@
+services:
+  panaderia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: panaderia_sistema
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/app/data/panaderia.db
+      - JWT_SECRET=tfg_panaderia_capiata_secret_key_2026
+    volumes:
+      # Persistencia de la base de datos SQLite en tu disco local
+      - ./data:/app/data

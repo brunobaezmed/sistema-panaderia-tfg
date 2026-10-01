@@ -13,9 +13,22 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, '..', '..', 'panaderia.db');
+const defaultRootDb = path.join(__dirname, '..', '..', 'panaderia.db');
+const dbPath = process.env.DB_PATH || defaultRootDb;
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+if (dbPath !== defaultRootDb && !fs.existsSync(dbPath) && fs.existsSync(defaultRootDb)) {
+  try {
+    fs.copyFileSync(defaultRootDb, dbPath);
+  } catch (err) {
+    console.warn('Aviso: No se pudo copiar la base inicial:', err.message);
+  }
+}
 const db = new sqlite3.Database(dbPath);
 
 // Promisified helpers
