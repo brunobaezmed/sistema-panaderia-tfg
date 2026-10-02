@@ -92,6 +92,9 @@ async function loadGlobalMetadata() {
   }
 }
 
+// Alias de compatibilidad
+const cargarGlobalMetadata = loadGlobalMetadata;
+
 let currentActiveView = 'dashboard';
 
 function togglePOS() {
@@ -1244,7 +1247,7 @@ async function posConfirmSale() {
       }
       posClearCart();
       document.getElementById('posMontoRecibido').value = '';
-      await cargarGlobalMetadata();
+      await loadGlobalMetadata();
       await cargarProductos();
     }
   } catch (err) {
@@ -3764,7 +3767,7 @@ async function guardarNuevaNotaCredito(e) {
         }
       });
       cargarNotasCreditoCompras();
-      await cargarGlobalMetadata();
+      await loadGlobalMetadata();
       await cargarProductos();
     }
   } catch (err) {
