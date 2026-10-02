@@ -1023,34 +1023,54 @@ async function cargarPOSView() {
     // Categories filter pills
     const cats = [...new Set(prods.map(p => p.categoria_nombre).filter(Boolean))];
     const catContainer = document.getElementById('posCategoryFilters');
-    catContainer.innerHTML = `<button class="btn btn-sm btn-outline-dark active py-0" onclick="posFilterCategory('')">Todos</button>` +
-      cats.map(c => `<button class="btn btn-sm btn-outline-secondary py-0 text-nowrap" onclick="posFilterCategory('${c}')">${c}</button>`).join('');
+    catContainer.innerHTML = `<button class="btn btn-sm btn-dark rounded-pill px-3 py-1 fw-semibold active" onclick="posFilterCategory('')">Todos</button>` +
+      cats.map(c => `<button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-semibold text-nowrap" onclick="posFilterCategory('${c}')">${c}</button>`).join('');
 
-    renderPOSProducts(prods);
+    posFilterCategory('');
   } catch (err) {
     console.error('Error cargando POS:', err);
   }
 }
 
+let posSelectedCategory = '';
+
 function renderPOSProducts(prods) {
   const container = document.getElementById('posProductsContainer');
+  const countBadge = document.getElementById('posProductCountText');
+  if (countBadge) {
+    countBadge.textContent = `${prods.length} ${prods.length === 1 ? 'producto disponible' : 'productos disponibles'}`;
+  }
+
   if (prods.length === 0) {
-    container.innerHTML = '<div class="col-12 text-center text-muted py-5">No hay productos disponibles para venta en mostrador.</div>';
+    container.innerHTML = `
+      <div class="col-12 text-center text-muted py-5 bg-white rounded shadow-sm">
+        <i class="fa-solid fa-magnifying-glass fa-3x mb-3 text-secondary opacity-50"></i>
+        <h6 class="fw-bold text-dark">No se encontraron productos</h6>
+        <p class="small text-muted mb-0">Intente con otro término de búsqueda o seleccione otra categoría.</p>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = prods.map(p => `
-    <div class="col-6 col-sm-4 col-md-3">
-      <div class="pos-product-card shadow-sm" onclick="posAddToCart(${p.id})">
+    <div class="col-6 col-sm-4 col-xl-3">
+      <div class="pos-product-card shadow-sm h-100" onclick="posAddToCart(${p.id})">
         <div>
-          <span class="badge bg-secondary-subtle text-dark small mb-1"><code>${p.codigo}</code></span>
-          <div class="fw-bold text-dark mb-1">${p.nombre}</div>
-          <small class="text-muted d-block">${p.categoria_nombre || ''}</small>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="badge bg-secondary-subtle text-secondary-emphasis small px-2 py-0"><code>${p.codigo}</code></span>
+            <span class="badge ${p.stock_total > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'} small text-nowrap">
+              Stock: ${p.stock_total}
+            </span>
+          </div>
+          <div class="fw-bold text-dark mb-1" style="font-size: 0.88rem; line-height: 1.25; min-height: 2.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${p.nombre}">
+            ${p.nombre}
+          </div>
+          <small class="text-muted d-block text-truncate" style="font-size: 0.75rem;">${p.categoria_nombre || 'General'}</small>
         </div>
         <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
-          <span class="fw-bold text-success fs-6">${API.formatGs(p.precio_venta)}</span>
-          <span class="badge ${p.stock_total > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">
-            Stock: ${p.stock_total}
+          <span class="fw-bold text-success fs-6 text-nowrap">${API.formatGs(p.precio_venta)}</span>
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1" style="font-size: 0.75rem;">
+            <i class="fa-solid fa-plus"></i>
           </span>
         </div>
       </div>
@@ -1059,20 +1079,32 @@ function renderPOSProducts(prods) {
 }
 
 function posFilterCategory(catName) {
+  posSelectedCategory = catName || '';
   document.querySelectorAll('#posCategoryFilters button').forEach(b => {
-    b.classList.toggle('active', b.textContent === (catName || 'Todos'));
+    const isTodos = (!catName && b.textContent === 'Todos');
+    const isCat = (b.textContent === catName);
+    const active = isTodos || isCat;
+    b.classList.toggle('btn-dark', active);
+    b.classList.toggle('active', active);
+    b.classList.toggle('btn-outline-secondary', !active);
   });
 
-  const search = document.getElementById('posSearchProduct').value.toLowerCase();
+  const search = (document.getElementById('posSearchProduct')?.value || '').toLowerCase().trim();
   const source = (posProductsList && posProductsList.length > 0) ? posProductsList : productosGlobal;
   const filtered = source.filter(p => {
     if (p.tipo !== 'producto_terminado') return false;
-    const matchCat = !catName || p.categoria_nombre === catName;
+    const matchCat = !posSelectedCategory || p.categoria_nombre === posSelectedCategory;
     const matchSearch = !search || p.nombre.toLowerCase().includes(search) || p.codigo.toLowerCase().includes(search);
     return matchCat && matchSearch;
   });
 
   renderPOSProducts(filtered);
+}
+
+function posClearSearch() {
+  const input = document.getElementById('posSearchProduct');
+  if (input) input.value = '';
+  posFilterCategory(posSelectedCategory);
 }
 
 function posAddToCart(prodId) {
@@ -1126,19 +1158,21 @@ function posRenderCart() {
     iva10 += Math.round(itemSubtotal / 11);
 
     return `
-      <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom small">
-        <div class="text-truncate" style="max-width: 130px;">
-          <strong class="d-block text-truncate">${item.nombre}</strong>
+      <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom small bg-white p-2 rounded shadow-2xs">
+        <div class="text-truncate me-2" style="max-width: 130px;">
+          <strong class="d-block text-truncate" title="${item.nombre}">${item.nombre}</strong>
           <small class="text-muted">${API.formatGs(item.precio_unitario)} x ${item.unidad_simbolo}</small>
         </div>
         <div class="d-flex align-items-center gap-1">
-          <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="posUpdateQty(${idx}, -1)">-</button>
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" onclick="posUpdateQty(${idx}, -1)">-</button>
           <span class="fw-bold px-1">${item.cantidad}</span>
-          <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="posUpdateQty(${idx}, 1)">+</button>
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" onclick="posUpdateQty(${idx}, 1)">+</button>
         </div>
-        <div class="text-end">
-          <div class="fw-bold">${API.formatGs(itemSubtotal)}</div>
-          <button class="btn btn-sm btn-outline-danger border-0 p-0" onclick="posRemoveItem(${idx})"><i class="fa-solid fa-xmark"></i></button>
+        <div class="text-end ms-2">
+          <div class="fw-bold text-success text-nowrap">${API.formatGs(itemSubtotal)}</div>
+          <button class="btn btn-sm btn-outline-danger border-0 p-0" onclick="posRemoveItem(${idx})" title="Quitar">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
       </div>
     `;
@@ -1148,7 +1182,13 @@ function posRenderCart() {
   document.getElementById('posIva10Txt').textContent = API.formatGs(iva10);
   document.getElementById('posTotalTxt').textContent = API.formatGs(subtotal);
 
-  posCalcularVuelto();
+  const metodo = document.getElementById('posPaymentMethod') ? document.getElementById('posPaymentMethod').value : 'efectivo';
+  if (metodo !== 'efectivo') {
+    document.getElementById('posMontoRecibido').value = subtotal;
+    document.getElementById('posVueltoTxt').textContent = '0 ₲';
+  } else {
+    posCalcularVuelto();
+  }
 }
 
 function posUpdateQty(idx, delta) {
@@ -1176,6 +1216,31 @@ function posCalcularVuelto() {
   const recibido = parseFloat(document.getElementById('posMontoRecibido').value) || 0;
   const vuelto = Math.max(0, recibido - total);
   document.getElementById('posVueltoTxt').textContent = API.formatGs(vuelto);
+}
+
+function posSetExactAmount() {
+  const total = posCart.reduce((sum, i) => sum + (i.cantidad * i.precio_unitario), 0);
+  document.getElementById('posMontoRecibido').value = total;
+  posCalcularVuelto();
+}
+
+function posQuickAmount(monto) {
+  document.getElementById('posMontoRecibido').value = monto;
+  posCalcularVuelto();
+}
+
+function posCambioMetodoPago() {
+  const metodo = document.getElementById('posPaymentMethod').value;
+  const efCont = document.getElementById('posEfectivoContainer');
+  const total = posCart.reduce((sum, i) => sum + (i.cantidad * i.precio_unitario), 0);
+  if (metodo !== 'efectivo') {
+    if (efCont) efCont.classList.add('d-none');
+    document.getElementById('posMontoRecibido').value = total;
+    document.getElementById('posVueltoTxt').textContent = '0 ₲';
+  } else {
+    if (efCont) efCont.classList.remove('d-none');
+    posCalcularVuelto();
+  }
 }
 
 function posCambioCondicionVenta() {
