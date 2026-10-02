@@ -15,3 +15,5 @@ services:
     volumes:
       # Persistencia de la base de datos SQLite en tu disco local
       - ./data:/app/data
+      # Mapeo en vivo del código y archivos estáticos
+      - ./src:/app/src
