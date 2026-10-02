@@ -2484,9 +2484,101 @@ async function cargarCaja() {
       `;
     }
 
+    cargarVentasCaja(res.ventas || []);
     cargarMovimientosCaja();
   } catch (err) {
     console.error('Error al cargar caja:', err);
+  }
+}
+
+async function cargarVentasCaja(ventasList) {
+  try {
+    let ventas = ventasList;
+    if (!ventas) {
+      const res = await API.get('/caja/ventas');
+      ventas = res.success ? res.ventas : [];
+    }
+
+    const tbody = document.getElementById('tablaCajaVentas');
+    const badgeCount = document.getElementById('badgeCajaVentas');
+    const totalTurnoEl = document.getElementById('cajaTotalVentasTurno');
+
+    if (badgeCount) badgeCount.textContent = ventas ? ventas.length : 0;
+
+    let totalTurno = 0;
+    if (ventas && ventas.length) {
+      totalTurno = ventas.reduce((acc, v) => acc + (Number(v.total) || 0), 0);
+    }
+    if (totalTurnoEl) totalTurnoEl.textContent = API.formatGs(totalTurno);
+
+    if (!tbody) return;
+
+    if (!ventas || !ventas.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            <i class="fa-solid fa-cart-shopping fa-2x mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0 fw-semibold">No se han registrado ventas en esta sesión de caja todavía.</p>
+            <small class="text-muted">Las ventas que realices en el Punto de Venta (POS) aparecerán aquí en tiempo real con su comprobante correspondiente.</small>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = ventas.map(v => {
+      let metodoBadge = 'bg-success';
+      let metodoIcon = 'fa-money-bill-wave';
+      let metodoTexto = 'Efectivo';
+
+      if (v.metodo_pago === 'tarjeta') {
+        metodoBadge = 'bg-primary';
+        metodoIcon = 'fa-credit-card';
+        metodoTexto = 'Tarjeta';
+      } else if (v.metodo_pago === 'transferencia_qr') {
+        metodoBadge = 'bg-info text-dark';
+        metodoIcon = 'fa-qrcode';
+        metodoTexto = 'Transferencia / QR';
+      }
+
+      const tipoBadge = v.tipo_comprobante === 'factura' ? 'bg-primary' : 'bg-secondary';
+      const condicionBadge = v.condicion_venta === 'credito' ? 'bg-warning text-dark' : 'bg-light text-dark border';
+      const hora = v.fecha_venta ? new Date(v.fecha_venta).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+      return `
+        <tr>
+          <td>
+            <span class="badge ${tipoBadge} me-1">${(v.tipo_comprobante || 'ticket').toUpperCase()}</span>
+            <strong>${v.numero_comprobante}</strong>
+          </td>
+          <td><i class="fa-regular fa-clock me-1 text-muted"></i>${hora}</td>
+          <td>
+            <div class="fw-semibold text-dark">${v.cliente_nombre || 'Cliente Ocasional / Mostrador'}</div>
+            ${v.cliente_ruc ? `<small class="text-muted">RUC/CI: ${v.cliente_ruc}</small>` : ''}
+          </td>
+          <td><span class="badge ${condicionBadge}">${(v.condicion_venta || 'contado').toUpperCase()}</span></td>
+          <td>
+            <span class="badge ${metodoBadge}">
+              <i class="fa-solid ${metodoIcon} me-1"></i>${metodoTexto}
+            </span>
+          </td>
+          <td class="text-end fw-bold text-success fs-6">${API.formatGs(v.total)}</td>
+          <td>
+            <span class="badge ${v.estado === 'completada' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger'}">
+              <i class="fa-solid ${v.estado === 'completada' ? 'fa-check-circle' : 'fa-circle-xmark'} me-1"></i>
+              ${(v.estado || 'completada').toUpperCase()}
+            </span>
+          </td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary py-1 px-2" onclick="mostrarTicketModal(${v.id})" title="Ver e Imprimir Ticket">
+              <i class="fa-solid fa-print me-1"></i> Ticket
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error al cargar ventas de caja:', err);
   }
 }
 
@@ -2494,6 +2586,9 @@ async function cargarMovimientosCaja() {
   try {
     const res = await API.get('/caja/movimientos');
     const tbody = document.getElementById('tablaCajaMovimientos');
+    const badgeMov = document.getElementById('badgeCajaMovimientos');
+    if (badgeMov) badgeMov.textContent = (res.success && res.movimientos) ? res.movimientos.length : 0;
+
     if (!tbody) return;
 
     if (!res.success || !res.movimientos.length) {

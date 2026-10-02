@@ -90,6 +90,24 @@ router.get('/sesion-activa', verifyToken, async (req, res, next) => {
 
     const saldoTeoricoEfectivo = sesion.monto_apertura + vEf + cobEf + ingExt - egExt;
 
+    const ventasSesion = await all(`
+      SELECT v.*, c.nombre_razon as cliente_nombre, c.ruc_ci as cliente_ruc, u.nombre as cajero_nombre
+      FROM ventas v
+      LEFT JOIN clientes c ON v.cliente_id = c.id
+      LEFT JOIN usuarios u ON v.usuario_id = u.id
+      WHERE v.sesion_caja_id = ?
+      ORDER BY v.id DESC
+    `, [sesion.id]);
+
+    const cobrosSesion = await all(`
+      SELECT c.*, cl.nombre_razon as cliente_nombre, u.nombre as usuario_nombre
+      FROM cobros c
+      LEFT JOIN clientes cl ON c.cliente_id = cl.id
+      LEFT JOIN usuarios u ON c.usuario_id = u.id
+      WHERE c.sesion_caja_id = ?
+      ORDER BY c.id DESC
+    `, [sesion.id]);
+
     res.json({
       success: true,
       activa: true,
@@ -102,8 +120,34 @@ router.get('/sesion-activa', verifyToken, async (req, res, next) => {
         ingresos_extra: ingExt,
         egresos_extra: egExt,
         saldo_teorico_efectivo: saldoTeoricoEfectivo
-      }
+      },
+      ventas: ventasSesion,
+      cobros: cobrosSesion
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/caja/ventas (Listar ventas de la sesión activa o por sesión)
+router.get('/ventas', verifyToken, async (req, res, next) => {
+  try {
+    const sesionId = req.query.sesion_id;
+    let targetSesionId = sesionId;
+    if (!targetSesionId) {
+      const sesion = await get("SELECT id FROM sesiones_caja WHERE estado = 'abierta' ORDER BY id DESC LIMIT 1");
+      if (!sesion) return res.json({ success: true, ventas: [] });
+      targetSesionId = sesion.id;
+    }
+    const ventas = await all(`
+      SELECT v.*, c.nombre_razon as cliente_nombre, c.ruc_ci as cliente_ruc, u.nombre as cajero_nombre
+      FROM ventas v
+      LEFT JOIN clientes c ON v.cliente_id = c.id
+      LEFT JOIN usuarios u ON v.usuario_id = u.id
+      WHERE v.sesion_caja_id = ?
+      ORDER BY v.id DESC
+    `, [targetSesionId]);
+    res.json({ success: true, ventas });
   } catch (err) {
     next(err);
   }

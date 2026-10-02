@@ -730,13 +730,18 @@
             <!-- Renderizado dinámicamente con JS -->
           </div>
 
-          <!-- Pestañas para Movimientos e Historial de Cierres -->
+          <!-- Pestañas para Ventas, Movimientos e Historial de Cierres -->
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-3 pb-0">
               <ul class="nav nav-tabs card-header-tabs" id="cajaTabs" role="tablist">
                 <li class="nav-item">
-                  <button class="nav-link active fw-semibold" id="tab-caja-movimientos-btn" data-bs-toggle="tab" data-bs-target="#tab-caja-movimientos" type="button">
-                    <i class="fa-solid fa-list-check me-1 text-primary"></i> Movimientos Extraordinarios de la Sesión
+                  <button class="nav-link active fw-semibold" id="tab-caja-ventas-btn" data-bs-toggle="tab" data-bs-target="#tab-caja-ventas" type="button">
+                    <i class="fa-solid fa-cart-shopping me-1 text-success"></i> Ventas del Turno (POS) <span id="badgeCajaVentas" class="badge bg-success ms-1">0</span>
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link fw-semibold" id="tab-caja-movimientos-btn" data-bs-toggle="tab" data-bs-target="#tab-caja-movimientos" type="button">
+                    <i class="fa-solid fa-list-check me-1 text-primary"></i> Movimientos Extraordinarios <span id="badgeCajaMovimientos" class="badge bg-secondary ms-1">0</span>
                   </button>
                 </li>
                 <li class="nav-item">
@@ -748,8 +753,42 @@
             </div>
             <div class="card-body p-0">
               <div class="tab-content">
+                <!-- Ventas de la Sesión Activa -->
+                <div class="tab-pane fade show active p-3" id="tab-caja-ventas">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                      <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-receipt me-1 text-success"></i> Ventas y Comprobantes del Turno</h6>
+                      <small class="text-muted">Tickets y facturas emitidos por mostrador durante la sesión activa actual</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-light text-dark border px-3 py-2 fw-semibold">
+                        Total Facturado Turno: <span id="cajaTotalVentasTurno" class="text-success fw-bold">0 ₲</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Nº Comprobante</th>
+                          <th>Hora</th>
+                          <th>Cliente</th>
+                          <th>Condición</th>
+                          <th>Método de Pago</th>
+                          <th class="text-end">Total (₲)</th>
+                          <th>Estado</th>
+                          <th class="text-center">Ticket</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tablaCajaVentas">
+                        <!-- Llenado dinámico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <!-- Movimientos Actuales -->
-                <div class="tab-pane fade show active p-3" id="tab-caja-movimientos">
+                <div class="tab-pane fade p-3" id="tab-caja-movimientos">
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0 fw-bold text-dark">Entradas y Salidas de Efectivo</h6>
                     <div class="d-flex gap-2">
