@@ -197,13 +197,14 @@ router.post('/', verifyToken, async (req, res, next) => {
     // 4. Insert sale header
     const resultVenta = await run(`
       INSERT INTO ventas (
-        numero_comprobante, tipo_comprobante, cliente_id, usuario_id,
+        numero_comprobante, tipo_comprobante, timbrado, cliente_id, usuario_id,
         deposito_id, sesion_caja_id, condicion_venta, subtotal, iva_5, iva_10, total,
         metodo_pago, monto_recibido, vuelto, estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
     `, [
       numeroComprobante,
       tipo_comprobante,
+      '18278546',
       cliente_id || null,
       req.usuario.id,
       deposito_id,

@@ -322,6 +322,7 @@ const initDatabase = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       numero_comprobante TEXT NOT NULL,
       tipo_comprobante TEXT DEFAULT 'ticket' CHECK(tipo_comprobante IN ('ticket', 'factura')),
+      timbrado TEXT DEFAULT '18278546',
       cliente_id INTEGER,
       usuario_id INTEGER NOT NULL,
       deposito_id INTEGER NOT NULL,
@@ -665,6 +666,9 @@ const initDatabase = async () => {
   }
   if (!colNames.includes('condicion_venta')) {
     await exec("ALTER TABLE ventas ADD COLUMN condicion_venta TEXT DEFAULT 'contado';");
+  }
+  if (!colNames.includes('timbrado')) {
+    await exec("ALTER TABLE ventas ADD COLUMN timbrado TEXT DEFAULT '18278546';");
   }
 
   // Migraciones seguras para compras

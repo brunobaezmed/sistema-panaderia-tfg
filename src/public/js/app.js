@@ -1261,16 +1261,31 @@ async function mostrarTicketModal(ventaId) {
     if (!res.success) return;
     const { venta, detalles } = res;
 
+    const isFactura = (venta.tipo_comprobante || '').toLowerCase() === 'factura';
+    const timbradoNumero = venta.timbrado || '18278546';
+
+    const modalTitle = document.querySelector('#modalTicket .modal-title');
+    if (modalTitle) {
+      modalTitle.textContent = isFactura ? 'Factura Legal de Venta' : 'Comprobante de Venta (Ticket)';
+    }
+
     const ticketHtml = `
       <div class="ticket-print text-center">
         <h5 class="fw-bold mb-0">PANADERÍA CAPIATÁ</h5>
-        <p class="mb-0">RUC: 80012345-6</p>
-        <p class="mb-1">Capiatá, Paraguay - Tel: (021) 500-100</p>
+        <p class="mb-0 fw-semibold" style="font-size: 13px;">RUC: 1047872-8</p>
+        <p class="mb-0 fw-bold text-dark" style="font-size: 13px;">TIMBRADO N° ${timbradoNumero}</p>
+        <p class="mb-1 text-muted" style="font-size: 10px;">Válido desde: 01/01/2026 hasta: 31/12/2026</p>
+        <p class="mb-1 small text-muted">Capiatá, Paraguay - Tel: (021) 500-100</p>
         <hr>
-        <p class="text-start mb-0"><strong>${venta.tipo_comprobante.toUpperCase()}:</strong> ${venta.numero_comprobante}</p>
-        <p class="text-start mb-0"><strong>Fecha:</strong> ${API.formatFecha(venta.fecha_venta)}</p>
-        <p class="text-start mb-0"><strong>Cliente:</strong> ${venta.cliente_nombre || 'Mostrador'} (${venta.cliente_ruc || '4444444-4'})</p>
-        <p class="text-start mb-1"><strong>Cajero:</strong> ${venta.cajero_nombre}</p>
+        <div class="text-start">
+          <p class="mb-0"><strong>${venta.tipo_comprobante.toUpperCase()}:</strong> <span class="fw-bold">${venta.numero_comprobante}</span></p>
+          <p class="mb-0"><strong>Condición:</strong> <span class="badge ${venta.condicion_venta === 'credito' ? 'bg-warning text-dark' : 'bg-light text-dark border'}">${(venta.condicion_venta || 'contado').toUpperCase()}</span></p>
+          <p class="mb-0"><strong>Fecha y Hora:</strong> ${API.formatFecha(venta.fecha_venta)} ${new Date(venta.fecha_venta).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })}</p>
+          <p class="mb-0"><strong>Cliente:</strong> ${venta.cliente_nombre || 'Cliente Ocasional / Mostrador'}</p>
+          <p class="mb-0"><strong>RUC / CI:</strong> ${venta.cliente_ruc || '4444444-4'}</p>
+          ${venta.cliente_direccion ? `<p class="mb-0"><strong>Dirección:</strong> ${venta.cliente_direccion}</p>` : ''}
+          <p class="mb-1"><strong>Cajero:</strong> ${venta.cajero_nombre}</p>
+        </div>
         <hr>
         <table style="width: 100%; text-align: left; font-size: 11px;">
           <thead>
@@ -1292,16 +1307,17 @@ async function mostrarTicketModal(ventaId) {
           <span>${venta.total.toLocaleString('es-PY')} ₲</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
-          <span>Pago (${venta.metodo_pago}):</span>
-          <span>${venta.monto_recibido.toLocaleString('es-PY')} ₲</span>
+          <span>Forma de Pago (${(venta.metodo_pago || 'efectivo').toUpperCase()}):</span>
+          <span>${(venta.monto_recibido || venta.total).toLocaleString('es-PY')} ₲</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 11px;">
           <span>Vuelto:</span>
-          <span>${venta.vuelto.toLocaleString('es-PY')} ₲</span>
+          <span>${(venta.vuelto || 0).toLocaleString('es-PY')} ₲</span>
         </div>
         <hr>
-        <p class="mb-0 small" style="font-size: 10px;">Liquidación IVA: 10%: ${venta.iva_10.toLocaleString('es-PY')} ₲ | 5%: ${venta.iva_5.toLocaleString('es-PY')} ₲</p>
+        <p class="mb-0 small" style="font-size: 10px;">Liquidación IVA: 10%: ${(venta.iva_10 || 0).toLocaleString('es-PY')} ₲ | 5%: ${(venta.iva_5 || 0).toLocaleString('es-PY')} ₲</p>
         <p class="mt-2 mb-0 fw-bold">¡Gracias por su preferencia!</p>
+        <p style="font-size: 9px;" class="text-muted mb-0">Original: Cliente | Duplicado: Archivo Tributario</p>
         <p style="font-size: 9px;" class="text-muted">Sistema TFG - Bruno Báez Medina (UNIGRAN)</p>
       </div>
     `;
@@ -2841,6 +2857,7 @@ async function verComprobanteCierre(sesionId) {
       <div class="ticket-print border p-4 bg-white" style="font-family: monospace; font-size: 13px;">
         <div class="text-center border-bottom pb-3 mb-3">
           <h5 class="fw-bold mb-1">PANADERÍA Y CONFITERÍA CAPIATÁ</h5>
+          <small class="text-muted d-block">RUC: 1047872-8 | Capiatá - Paraguay</small>
           <small class="text-muted d-block">ACTA OFICIAL DE CIERRE DE CAJA Y ARQUEO</small>
           <small class="text-muted d-block">Punto de Expedición: ${sesion.punto_expedicion} | Estab: ${sesion.establecimiento}</small>
         </div>
@@ -3062,7 +3079,7 @@ async function verReciboOficial(cobroId) {
         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
           <div>
             <h6 class="fw-bold mb-0">PANADERÍA Y CONFITERÍA CAPIATÁ</h6>
-            <small class="text-muted">RUC: 80012345-6 | Capiatá - Paraguay</small>
+            <small class="text-muted">RUC: 1047872-8 | Capiatá - Paraguay</small>
           </div>
           <div class="text-end">
             <span class="badge bg-secondary mb-1">${tipoCopia}</span>
@@ -3893,7 +3910,7 @@ async function verComprobanteNotaCredito(id) {
         <div class="row g-2 mb-3 small">
           <div class="col-7">
             <strong>CLIENTE:</strong> PANADERÍA Y CONFITERÍA CAPIATÁ<br>
-            <strong>RUC:</strong> 80012345-6 | <strong>Dirección:</strong> Capiatá - Central<br>
+            <strong>RUC:</strong> 1047872-8 | <strong>Dirección:</strong> Capiatá - Central<br>
             <strong>Factura Afectada:</strong> FACT-${nota.factura_compra} (Fecha: ${nota.fecha_compra})
           </div>
           <div class="col-5 text-end">
@@ -4304,7 +4321,7 @@ async function verComprobantePresupuesto(id) {
             <h4 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-bread-slice me-2 text-warning"></i>PANADERÍA CAPIATÁ</h4>
             <div class="small text-muted">Elaboración Artesanal & Servicios de Catering para Eventos</div>
             <div class="small text-muted">Ruta 2 Km 20 - Capiatá, Paraguay | Tel: (0228) 634-000</div>
-            <div class="small text-muted">RUC: 80099887-4</div>
+            <div class="small text-muted">RUC: 1047872-8</div>
           </div>
           <div class="col-4 text-end">
             <span class="badge bg-primary fs-6 px-3 py-2 mb-1">PRESUPUESTO</span>
@@ -4615,6 +4632,7 @@ async function verComprobantePedidoServicio(id) {
             <h4 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-cake-candles me-2 text-warning"></i>PANADERÍA CAPIATÁ</h4>
             <div class="small text-muted">Contratos de Eventos, Catering y Repostería Fina</div>
             <div class="small text-muted">Ruta 2 Km 20 - Capiatá, Paraguay | Tel: (0228) 634-000</div>
+            <div class="small text-muted">RUC: 1047872-8</div>
           </div>
           <div class="col-4 text-end">
             <span class="badge bg-warning text-dark fs-6 px-3 py-2 mb-1">ORDEN DE EVENTO</span>
