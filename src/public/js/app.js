@@ -748,10 +748,16 @@ async function abrirModalReceta() {
   const count = (await API.get('/recetas')).recetas.length + 1;
   document.getElementById('recCodigo').value = `REC-${String(count).padStart(3, '0')}`;
 
-  // Products select
-  const terminados = productosGlobal.filter(p => p.tipo === 'producto_terminado');
+  // Asegurar productos actualizados y ordenados
+  const resProd = await API.get('/productos');
+  if (resProd.success && resProd.productos) productosGlobal = resProd.productos;
+
+  const terminados = productosGlobal
+    .filter(p => p.tipo === 'producto_terminado')
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
   const selTerminado = document.getElementById('recProductoTerminadoId');
-  selTerminado.innerHTML = terminados.map(p => `<option value="${p.id}">${p.nombre} (${p.codigo})</option>`).join('');
+  selTerminado.innerHTML = '<option value="">-- Seleccionar Producto a Elaborar --</option>' + terminados.map(p => `<option value="${p.id}">${p.nombre} (${p.codigo})</option>`).join('');
 
   document.getElementById('contenedorInsumosReceta').innerHTML = '';
   agregarFilaInsumoReceta();

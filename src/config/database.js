@@ -806,7 +806,17 @@ const seedInitialData = async () => {
     { cod: 'PROD-005', bar: '7841005', nom: 'Chipa Almidón Especial (Unidad)', desc: 'Chipa fina de puro almidón con queso y manteca', cat: 7, un: 5, min: 20, max: 250, costo: 2600, precio: 6000 },
     { cod: 'PROD-006', bar: '7841006', nom: 'Medialunas de Manteca (Docena)', desc: 'Medialunas dulces glaseadas con almíbar artesanal', cat: 6, un: 6, min: 5, max: 50, costo: 15000, precio: 30000 },
     { cod: 'PROD-007', bar: '7841007', nom: 'Facturas Surtidas con Crema y Dulce (Docena)', desc: 'Facturas surtidas de crema pastelera y dulce de guayaba', cat: 6, un: 6, min: 5, max: 40, costo: 16000, precio: 32000 },
-    { cod: 'PROD-008', bar: '7841008', nom: 'Empanada de Carne al Horno (Unidad)', desc: 'Empanada casera horneada con relleno jugoso de carne', cat: 8, un: 5, min: 15, max: 100, costo: 3000, precio: 6500 }
+    { cod: 'PROD-008', bar: '7841008', nom: 'Empanada de Carne al Horno (Unidad)', desc: 'Empanada casera horneada con relleno jugoso de carne', cat: 8, un: 5, min: 15, max: 100, costo: 3000, precio: 6500 },
+    { cod: 'PROD-009', bar: '7841009', nom: 'Pan Baguette Artesanal (kg)', desc: 'Pan estilo francés alargado, corteza crocante y miga aireada', cat: 5, un: 1, min: 5, max: 100, costo: 5000, precio: 10000 },
+    { cod: 'PROD-010', bar: '7841010', nom: 'Pan de Viena / Pancho (Docena)', desc: 'Panecillos tiernos y esponjosos ideales para panchos y meriendas', cat: 5, un: 6, min: 5, max: 80, costo: 8000, precio: 16000 },
+    { cod: 'PROD-011', bar: '7841011', nom: 'Pan de Miga Especial para Sandwich (kg)', desc: 'Pan de molde blanco sin corteza de textura suave para sandwiches', cat: 5, un: 1, min: 10, max: 120, costo: 7500, precio: 15000 },
+    { cod: 'PROD-012', bar: '7841012', nom: 'Chipa Guasu Casera en Bandeja (kg)', desc: 'Pastel tradicional de choclo fresco, cebolla y abundante queso Paraguay', cat: 7, un: 1, min: 5, max: 60, costo: 18000, precio: 35000 },
+    { cod: 'PROD-013', bar: '7841013', nom: 'Sopa Paraguaya Tradicional (kg)', desc: 'Bizcochuelo salado tradicional de harina de maíz, queso y cebolla', cat: 7, un: 1, min: 5, max: 60, costo: 16000, precio: 32000 },
+    { cod: 'PROD-014', bar: '7841014', nom: 'Donas Rellenas con Dulce de Leche (Docena)', desc: 'Donas esponjosas glaseadas con chocolate y rellenas de dulce de leche', cat: 6, un: 6, min: 4, max: 50, costo: 18000, precio: 36000 },
+    { cod: 'PROD-015', bar: '7841015', nom: 'Palmeritas Crocantes Hojaldradas (Docena)', desc: 'Masitas finas de hojaldre crocante caramelizado con azúcar', cat: 6, un: 6, min: 5, max: 40, costo: 12000, precio: 24000 },
+    { cod: 'PROD-016', bar: '7841016', nom: 'Empanada de Jamón y Queso al Horno (Unidad)', desc: 'Empanada horneada con masa casera rellena de queso derretido y jamón', cat: 8, un: 5, min: 15, max: 100, costo: 3200, precio: 6500 },
+    { cod: 'PROD-017', bar: '7841017', nom: 'Tarta de Ricota y Limón (Unidad)', desc: 'Tarta dulce horneada con suave crema de ricota y ralladura de limón', cat: 9, un: 5, min: 2, max: 20, costo: 25000, precio: 55000 },
+    { cod: 'PROD-018', bar: '7841018', nom: 'Torta Artesanal de Cumpleaños / Chantilly (kg)', desc: 'Bizcochuelo húmedo relleno de dulce de leche, duraznos y crema chantilly', cat: 9, un: 1, min: 2, max: 30, costo: 38000, precio: 75000 }
   ];
 
   for (const p of terminados) {
