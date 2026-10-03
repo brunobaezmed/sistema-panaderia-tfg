@@ -25,7 +25,7 @@ router.get('/clientes', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/ventas/clientes
-router.post('/clientes', verifyToken, async (req, res, next) => {
+router.post('/clientes', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const { ruc_ci, nombre_razon, telefono, email, direccion } = req.body;
     if (!ruc_ci || !nombre_razon) {
@@ -128,7 +128,7 @@ router.get('/:id', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/ventas (POS Checkout)
-router.post('/', verifyToken, async (req, res, next) => {
+router.post('/', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const {
       cliente_id,

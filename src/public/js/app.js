@@ -41,6 +41,153 @@ function setDemoUser(email, pass) {
   document.getElementById('loginPassword').value = pass;
 }
 
+// ============================================================================
+// GESTIÓN DE PERMISOS Y CONTROL DE ACCESO BASADO EN ROLES (RBAC)
+// ============================================================================
+const PERMISOS_ROLES = {
+  admin: {
+    nombre: 'ADMINISTRADOR',
+    badgeClass: 'bg-dark text-white',
+    vistas: [
+      'dashboard', 'productos', 'recetas', 'produccion', 'pos', 'caja',
+      'creditos', 'servicios', 'ventas-historial', 'compras', 'depositos',
+      'ajustes', 'kardex', 'reportes', 'usuarios'
+    ],
+    puedePOS: true,
+    puedeCrearProductos: true,
+    puedeEditarProductos: true,
+    puedeAjustarStock: true,
+    puedeCrearRecetas: true,
+    puedeProduccion: true,
+    puedeCompras: true,
+    puedeCaja: true,
+    puedeUsuarios: true
+  },
+  deposito: {
+    nombre: 'DEPÓSITO / INVENTARIO',
+    badgeClass: 'bg-primary text-white',
+    vistas: [
+      'dashboard', 'productos', 'compras', 'depositos', 'ajustes', 'kardex', 'reportes'
+    ],
+    puedePOS: false,
+    puedeCrearProductos: true,
+    puedeEditarProductos: true,
+    puedeAjustarStock: true,
+    puedeCrearRecetas: false,
+    puedeProduccion: false,
+    puedeCompras: true,
+    puedeCaja: false,
+    puedeUsuarios: false
+  },
+  vendedor: {
+    nombre: 'VENTAS / CAJERO',
+    badgeClass: 'bg-success text-white',
+    vistas: [
+      'dashboard', 'pos', 'caja', 'creditos', 'servicios', 'ventas-historial', 'productos', 'reportes'
+    ],
+    puedePOS: true,
+    puedeCrearProductos: false,
+    puedeEditarProductos: false,
+    puedeAjustarStock: false,
+    puedeCrearRecetas: false,
+    puedeProduccion: false,
+    puedeCompras: false,
+    puedeCaja: true,
+    puedeUsuarios: false
+  },
+  produccion: {
+    nombre: 'PRODUCCIÓN / PANADERO',
+    badgeClass: 'bg-warning text-dark',
+    vistas: [
+      'dashboard', 'recetas', 'produccion', 'productos', 'compras', 'reportes'
+    ],
+    puedePOS: false,
+    puedeCrearProductos: false,
+    puedeEditarProductos: false,
+    puedeAjustarStock: false,
+    puedeCrearRecetas: true,
+    puedeProduccion: true,
+    puedeCompras: true,
+    puedeCaja: false,
+    puedeUsuarios: false
+  }
+};
+
+function normalizarRol(rol) {
+  if (!rol) return 'admin';
+  const r = String(rol).toLowerCase().trim();
+  if (r.includes('admin')) return 'admin';
+  if (r.includes('deposito') || r.includes('depósito') || r.includes('inventario') || r.includes('almacen')) return 'deposito';
+  if (r.includes('vendedor') || r.includes('cajero') || r.includes('caja') || r.includes('ventas')) return 'vendedor';
+  if (r.includes('produccion') || r.includes('producción') || r.includes('panadero')) return 'produccion';
+  return 'admin';
+}
+
+function aplicarPermisosRol(userRol) {
+  const rolKey = normalizarRol(userRol);
+  const cfg = PERMISOS_ROLES[rolKey] || PERMISOS_ROLES.admin;
+
+  // 1. Etiqueta y rol en navbar
+  const elRol = document.getElementById('userRol');
+  if (elRol) {
+    elRol.textContent = cfg.nombre;
+    elRol.className = `badge ${cfg.badgeClass} fw-semibold px-2 py-1`;
+    elRol.style.fontSize = '0.65rem';
+  }
+  const elRolMenu = document.getElementById('userRolMenu');
+  if (elRolMenu) {
+    elRolMenu.textContent = `Rol: ${cfg.nombre}`;
+  }
+
+  // 2. Botón POS en barra superior
+  const btnNavPOS = document.getElementById('btnNavPOS');
+  if (btnNavPOS) {
+    if (cfg.puedePOS) {
+      btnNavPOS.classList.remove('d-none');
+    } else {
+      btnNavPOS.classList.add('d-none');
+    }
+  }
+
+  // 3. Enlaces del menú lateral (sidebar) según permisos
+  document.querySelectorAll('.sidebar .nav-link[data-view]').forEach(link => {
+    const v = link.getAttribute('data-view');
+    if (cfg.vistas.includes(v)) {
+      link.classList.remove('d-none');
+    } else {
+      link.classList.add('d-none');
+    }
+  });
+
+  // 4. Ocultar títulos de sección del sidebar si no tienen ningún enlace visible
+  document.querySelectorAll('.sidebar .nav-section-title').forEach(sec => {
+    let next = sec.nextElementSibling;
+    let hasVisibleLinks = false;
+    while (next && !next.classList.contains('nav-section-title')) {
+      if (next.classList.contains('nav-link') && !next.classList.contains('d-none')) {
+        hasVisibleLinks = true;
+        break;
+      }
+      next = next.nextElementSibling;
+    }
+    if (hasVisibleLinks) {
+      sec.classList.remove('d-none');
+    } else {
+      sec.classList.add('d-none');
+    }
+  });
+
+  // 5. Botones de acción restringidos
+  const btnNuevoProd = document.getElementById('btnAbrirModalProducto');
+  if (btnNuevoProd) {
+    if (cfg.puedeCrearProductos) {
+      btnNuevoProd.classList.remove('d-none');
+    } else {
+      btnNuevoProd.classList.add('d-none');
+    }
+  }
+}
+
 // Authentication check
 async function checkAuth() {
   const token = API.getToken();
@@ -53,23 +200,22 @@ async function checkAuth() {
     document.getElementById('loginSection').classList.add('d-none');
     document.getElementById('appSection').classList.remove('d-none');
 
+    // Aplicar permisos visuales y de navegación según rol
+    aplicarPermisosRol(user.rol);
+
     // Set user info
     document.getElementById('userNombre').textContent = user.nombre;
-    document.getElementById('userRol').textContent = user.rol.toUpperCase();
     document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
     const uMenu = document.getElementById('userNombreMenu');
     if (uMenu) uMenu.textContent = user.nombre;
-    const rMenu = document.getElementById('userRolMenu');
-    if (rMenu) rMenu.textContent = `Rol: ${user.rol.toUpperCase()}`;
-
-    // Hide user management if not admin
-    if (user.rol !== 'admin') {
-      const navUsr = document.getElementById('navUsuarios');
-      if (navUsr) navUsr.classList.add('d-none');
-    }
 
     await loadGlobalMetadata();
-    navigate('dashboard');
+
+    // Redirigir a vista inicial permitida
+    const rolKey = normalizarRol(user.rol);
+    const cfg = PERMISOS_ROLES[rolKey] || PERMISOS_ROLES.admin;
+    const initialView = cfg.vistas.includes('dashboard') ? 'dashboard' : cfg.vistas[0];
+    navigate(initialView);
   }
 }
 
@@ -107,11 +253,51 @@ function togglePOS() {
 
 // Navigation Router
 function navigate(viewName) {
+  // Validación de permisos por rol
+  const user = API.getUser();
+  const rolKey = normalizarRol(user ? user.rol : 'admin');
+  const cfg = PERMISOS_ROLES[rolKey] || PERMISOS_ROLES.admin;
+
+  const titles = {
+    'dashboard': 'Panel de Control (Dashboard)',
+    'productos': 'Catálogo de Insumos y Productos',
+    'recetas': 'Recetario y Fórmulas de Panadería',
+    'produccion': 'Gestión de Producción / Horneadas',
+    'pos': 'Punto de Venta (POS Mostrador)',
+    'caja': 'Gestión de Caja y Turnos',
+    'creditos': 'Cartera de Cuentas por Cobrar',
+    'servicios': 'Presupuestos y Servicios de Eventos',
+    'ventas-historial': 'Historial de Ventas y Facturación',
+    'compras': 'Gestión de Compras y Proveedores',
+    'depositos': 'Depósitos y Transferencias Internas',
+    'ajustes': 'Ajustes de Stock y Mermas',
+    'kardex': 'Libro Kardex de Movimientos',
+    'reportes': 'Informes y Estadísticas',
+    'usuarios': 'Administración de Usuarios'
+  };
+
+  if (!cfg.vistas.includes(viewName)) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Acceso Restringido',
+        html: `Tu rol actual (<strong>${cfg.nombre}</strong>) no tiene autorización para acceder al módulo <strong>${titles[viewName] || viewName}</strong>.`,
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#d97706'
+      });
+    }
+    const fallback = cfg.vistas.includes('dashboard') ? 'dashboard' : cfg.vistas[0];
+    if (viewName !== fallback) {
+      navigate(fallback);
+    }
+    return;
+  }
+
   currentActiveView = viewName;
 
   // Actualizar botón de POS en la barra superior dinámica
   const btnNavPOS = document.getElementById('btnNavPOS');
-  if (btnNavPOS) {
+  if (btnNavPOS && cfg.puedePOS) {
     if (viewName === 'pos') {
       btnNavPOS.className = 'btn btn-outline-danger fw-bold btn-sm shadow-sm bg-white d-flex align-items-center gap-1';
       btnNavPOS.style.backgroundColor = '#fff';
@@ -147,23 +333,6 @@ function navigate(viewName) {
   }
 
   // Update Page Title
-  const titles = {
-    'dashboard': 'Panel de Control (Dashboard)',
-    'productos': 'Catálogo de Insumos y Productos',
-    'recetas': 'Recetario y Fórmulas de Panadería',
-    'produccion': 'Gestión de Producción / Horneadas',
-    'pos': 'Punto de Venta (POS Mostrador)',
-    'caja': 'Gestión de Caja y Turnos',
-    'creditos': 'Cartera de Cuentas por Cobrar',
-    'servicios': 'Presupuestos y Servicios de Eventos',
-    'ventas-historial': 'Historial de Ventas y Facturación',
-    'compras': 'Gestión de Compras y Proveedores',
-    'depositos': 'Depósitos y Transferencias Internas',
-    'ajustes': 'Ajustes de Stock y Mermas',
-    'kardex': 'Libro Kardex de Movimientos',
-    'reportes': 'Informes y Estadísticas',
-    'usuarios': 'Administración de Usuarios'
-  };
   document.getElementById('pageTitle').textContent = titles[viewName] || 'Sistema de Gestión';
 
   // Trigger view data loading
@@ -491,6 +660,10 @@ async function cargarProductos() {
       return;
     }
 
+    const curUser = API.getUser();
+    const curRol = normalizarRol(curUser ? curUser.rol : 'admin');
+    const puedeEditar = PERMISOS_ROLES[curRol]?.puedeEditarProductos ?? true;
+
     tbody.innerHTML = productosGlobal.map(p => `
       <tr>
         <td><code>${p.codigo}</code></td>
@@ -519,9 +692,10 @@ async function cargarProductos() {
           <button class="btn btn-sm btn-outline-secondary py-0" onclick="verDetalleProducto(${p.id})" title="Ver stock por depósito y lotes">
             <i class="fa-solid fa-eye"></i>
           </button>
-          <button class="btn btn-sm btn-outline-warning py-0" onclick="editarProducto(${p.id})" title="Editar">
+          ${puedeEditar ? `
+          <button class="btn btn-sm btn-outline-warning py-0 ms-1" onclick="editarProducto(${p.id})" title="Editar">
             <i class="fa-solid fa-pen-to-square"></i>
-          </button>
+          </button>` : ''}
         </td>
       </tr>
     `).join('');
@@ -531,6 +705,12 @@ async function cargarProductos() {
 }
 
 function abrirModalProducto() {
+  const curRol = normalizarRol(API.getUser()?.rol);
+  if (!PERMISOS_ROLES[curRol]?.puedeCrearProductos) {
+    Swal.fire('Permisos Insuficientes', 'Tu rol no tiene autorización para registrar o modificar productos.', 'warning');
+    return;
+  }
+
   document.getElementById('formProducto').reset();
   document.getElementById('prodId').value = '';
   document.getElementById('modalProductoTitulo').textContent = 'Nuevo Producto / Insumo';
@@ -547,6 +727,12 @@ function abrirModalProducto() {
 }
 
 async function editarProducto(id) {
+  const curRol = normalizarRol(API.getUser()?.rol);
+  if (!PERMISOS_ROLES[curRol]?.puedeEditarProductos) {
+    Swal.fire('Permisos Insuficientes', 'Tu rol no tiene autorización para modificar productos.', 'warning');
+    return;
+  }
+
   try {
     const res = await API.get(`/productos/${id}`);
     if (!res.success) return;

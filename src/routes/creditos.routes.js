@@ -15,7 +15,7 @@
 const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../config/database');
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken, checkRole } = require('../middlewares/auth');
 
 // GET /api/creditos (Listado general de cuentas por cobrar)
 router.get('/', verifyToken, async (req, res, next) => {
@@ -130,7 +130,7 @@ router.get('/cliente/:cliente_id', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/creditos/cobrar (Registrar cobro y emitir Recibo Oficial)
-router.post('/cobrar', verifyToken, async (req, res, next) => {
+router.post('/cobrar', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const {
       cliente_id,

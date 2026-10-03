@@ -16,7 +16,7 @@
 const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../config/database');
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken, checkRole } = require('../middlewares/auth');
 
 // GET /api/caja/cajas (Listar terminales de caja)
 router.get('/cajas', verifyToken, async (req, res, next) => {
@@ -154,7 +154,7 @@ router.get('/ventas', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/caja/apertura (Abrir turno de caja)
-router.post('/apertura', verifyToken, async (req, res, next) => {
+router.post('/apertura', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const { caja_id, monto_apertura = 0, observaciones = '' } = req.body;
 
@@ -186,7 +186,7 @@ router.post('/apertura', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/caja/movimiento (Registrar entrada o salida de efectivo)
-router.post('/movimiento', verifyToken, async (req, res, next) => {
+router.post('/movimiento', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const { tipo_movimiento, concepto, monto } = req.body;
 
@@ -244,7 +244,7 @@ router.get('/movimientos', verifyToken, async (req, res, next) => {
 });
 
 // POST /api/caja/cierre (Cierre formal de caja y recaudación a depositar)
-router.post('/cierre', verifyToken, async (req, res, next) => {
+router.post('/cierre', verifyToken, checkRole(['admin', 'vendedor']), async (req, res, next) => {
   try {
     const { monto_cierre_efectivo, observaciones = '', recaudacion_depositar } = req.body;
 
