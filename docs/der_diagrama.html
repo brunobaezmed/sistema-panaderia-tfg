@@ -100,7 +100,7 @@
   <div class="header">
     <div>
       <h1>Diagrama Entidad-Relación (DER) - 38 Tablas</h1>
-      <p>Sistema de Gestión para Panadería y Confitería | Tesis UNIGRAN - Bruno Báez</p>
+      <p>Sistema de Gestión de Inventario y Producción para Panadería y Confitería | Tesis UNIGRAN - Bruno Báez</p>
     </div>
     <div class="toolbar">
       <button class="btn" onclick="descargarPNG()">Descargar PNG (Alta resolución)</button>
@@ -113,11 +113,18 @@
     <div class="mermaid" id="der-mermaid">
 erDiagram
 
+    %% ==========================================
+    %% MÓDULO 1: SEGURIDAD Y CONTROL DE ACCESO (RBAC)
+    %% ==========================================
     USUARIOS {
         int id PK
         string nombre
         string email
-        string rol
+        string password
+        string rol "admin | deposito | vendedor | produccion"
+        string telefono
+        int estado
+        datetime created_at
     }
 
     AUDITORIA_LOGS {
@@ -125,12 +132,20 @@ erDiagram
         int usuario_id FK
         string accion
         string tabla_afectada
+        int registro_id
+        text detalles
+        string ip
+        datetime fecha
     }
 
+    %% ==========================================
+    %% MÓDULO 2: CATÁLOGOS BASE E INVENTARIO
+    %% ==========================================
     CATEGORIAS {
         int id PK
         string nombre
-        string tipo
+        string descripcion
+        string tipo "materia_prima | producto_terminado"
     }
 
     UNIDADES_MEDIDA {
@@ -142,24 +157,41 @@ erDiagram
     DEPOSITOS {
         int id PK
         string nombre
+        string ubicacion
+        string descripcion
         int es_principal
+        datetime created_at
     }
 
     PROVEEDORES {
         int id PK
         string ruc
         string razon_social
+        string contacto_nombre
+        string telefono
+        string email
+        string direccion
+        string ciudad
+        int estado
+        datetime created_at
     }
 
     PRODUCTOS {
         int id PK
         string codigo
+        string codigo_barra
         string nombre
-        string tipo
+        string descripcion
+        string tipo "materia_prima | producto_terminado"
         int categoria_id FK
         int unidad_id FK
+        decimal stock_minimo
+        decimal stock_maximo
         decimal precio_costo
         decimal precio_venta
+        decimal iva "0 | 5 | 10"
+        int estado
+        datetime created_at
     }
 
     STOCK_DEPOSITO {
@@ -174,16 +206,29 @@ erDiagram
         int producto_id FK
         int deposito_id FK
         string codigo_lote
+        decimal cantidad_inicial
         decimal cantidad_actual
+        date fecha_elaboracion
         date fecha_vencimiento
+        decimal precio_compra
+        string estado "activo | vencido | agotado"
+        datetime created_at
     }
 
+    %% ==========================================
+    %% MÓDULO 3: FÓRMULAS Y PRODUCCIÓN (CUADRA)
+    %% ==========================================
     RECETAS {
         int id PK
         string codigo
         string nombre
+        string descripcion
         int producto_terminado_id FK
         decimal rendimiento_unidades
+        int tiempo_estimado_min
+        decimal costo_estimado
+        int estado
+        datetime created_at
     }
 
     RECETAS_DETALLES {
@@ -200,22 +245,37 @@ erDiagram
         int producto_terminado_id FK
         int deposito_origen_id FK
         int deposito_destino_id FK
+        decimal cantidad_planificada
         decimal cantidad_obtenida
+        decimal merma_estimada
+        decimal costo_total
+        string estado "planificada | en_proceso | finalizada | cancelada"
         int usuario_id FK
+        date fecha_produccion
+        text observaciones
+        datetime created_at
     }
 
+    %% ==========================================
+    %% MÓDULO 4: LOGÍSTICA, MERMAS Y KARDEX
+    %% ==========================================
     TRANSFERENCIAS {
         int id PK
         string codigo
         int deposito_origen_id FK
         int deposito_destino_id FK
         int usuario_id FK
+        date fecha
+        string motivo
+        string estado "pendiente | completada | cancelada"
+        datetime created_at
     }
 
     TRANSFERENCIAS_DETALLES {
         int id PK
         int transferencia_id FK
         int producto_id FK
+        int lote_id
         decimal cantidad
     }
 
@@ -224,13 +284,19 @@ erDiagram
         string codigo
         int deposito_id FK
         int usuario_id FK
-        string tipo_ajuste
+        date fecha
+        string tipo_ajuste "ingreso | egreso | inventario_fisico"
+        string motivo "merma | vencimiento | rotura | recuento_fisico | otro"
+        text observaciones
+        datetime created_at
     }
 
     AJUSTES_DETALLES {
         int id PK
         int ajuste_id FK
         int producto_id FK
+        decimal cantidad_anterior
+        decimal cantidad_ajustada
         decimal diferencia
     }
 
@@ -239,44 +305,66 @@ erDiagram
         datetime fecha
         int producto_id FK
         int deposito_id FK
-        string tipo_movimiento
+        string tipo_movimiento "COMPRA | VENTA | PRODUCCION_ENTRADA | CONSUMO_INSUMOS | TRANSFERENCIA_ENTRADA | TRANSFERENCIA_SALIDA | AJUSTE_POSITIVO | AJUSTE_NEGATIVO"
+        int referencia_id
+        string referencia_documento
+        decimal cantidad_entrada
+        decimal cantidad_salida
         decimal saldo_resultante
+        decimal costo_unitario
+        decimal costo_total
+        int usuario_id FK
+        text observaciones
     }
 
+    %% ==========================================
+    %% MÓDULO 5: CAJA, ARQUEO Y COBRANZAS
+    %% ==========================================
     CAJAS {
         int id PK
         string nombre
-        string punto_expedicion
+        string punto_expedicion "001"
+        string establecimiento "001"
+        int estado
+        datetime created_at
     }
 
     SESIONES_CAJA {
         int id PK
         int caja_id FK
         int usuario_id FK
+        datetime fecha_apertura
+        datetime fecha_cierre
         decimal monto_apertura
         decimal monto_sistema
         decimal monto_cierre_efectivo
         decimal diferencia
         decimal recaudacion_depositar
-        string estado
+        string estado "abierta | cerrada"
+        text observaciones
     }
 
     MOVIMIENTOS_CAJA {
         int id PK
         int sesion_caja_id FK
-        string tipo_movimiento
+        string tipo_movimiento "ingreso | egreso"
         string concepto
         decimal monto
+        int usuario_id FK
+        datetime created_at
     }
 
     CUENTAS_COBRAR {
         int id PK
         int venta_id FK
         int cliente_id FK
+        int numero_cuota
+        int total_cuotas
         decimal monto_cuota
         decimal saldo_pendiente
         date fecha_vencimiento
-        string estado
+        string estado "pendiente | parcial | pagada | vencida"
+        datetime created_at
     }
 
     COBROS {
@@ -284,8 +372,12 @@ erDiagram
         string numero_recibo
         int cliente_id FK
         int sesion_caja_id FK
+        int usuario_id FK
+        datetime fecha_cobro
         decimal monto_total
-        string forma_cobro
+        string forma_cobro "efectivo | tarjeta | transferencia_qr | cheque"
+        text observaciones
+        datetime created_at
     }
 
     COBROS_DETALLES {
@@ -295,21 +387,39 @@ erDiagram
         decimal monto_aplicado
     }
 
+    %% ==========================================
+    %% MÓDULO 6: VENTAS Y FACTURACIÓN LEGAL
+    %% ==========================================
     CLIENTES {
         int id PK
         string ruc_ci
         string nombre_razon
+        string telefono
+        string email
+        string direccion
+        datetime created_at
     }
 
     VENTAS {
         int id PK
         string numero_comprobante
+        string tipo_comprobante "ticket | factura"
+        string timbrado "18278546"
         int cliente_id FK
         int usuario_id FK
+        int deposito_id FK
         int sesion_caja_id FK
-        string condicion_venta
+        string condicion_venta "contado | credito"
+        datetime fecha_venta
+        decimal subtotal
+        decimal iva_5
+        decimal iva_10
         decimal total
-        string metodo_pago
+        string metodo_pago "efectivo | tarjeta | transferencia_qr | mixto"
+        decimal monto_recibido
+        decimal vuelto
+        string estado "completada | anulada"
+        datetime created_at
     }
 
     VENTAS_DETALLES {
@@ -317,16 +427,24 @@ erDiagram
         int venta_id FK
         int producto_id FK
         decimal cantidad
+        decimal precio_unitario
+        decimal iva_tipo "0 | 5 | 10"
         decimal subtotal
     }
 
+    %% ==========================================
+    %% MÓDULO 7: CICLO COMPLETO DE COMPRAS
+    %% ==========================================
     PEDIDOS_COMPRAS {
         int id PK
         string numero_pedido
         int usuario_id FK
         date fecha_pedido
-        string prioridad
-        string estado
+        date fecha_requerida
+        string prioridad "baja | media | alta | urgente"
+        string estado "pendiente | aprobado | rechazado | ordenado"
+        text observaciones
+        datetime created_at
     }
 
     PEDIDOS_COMPRAS_DETALLES {
@@ -334,6 +452,7 @@ erDiagram
         int pedido_compra_id FK
         int producto_id FK
         decimal cantidad_solicitada
+        text observaciones
     }
 
     ORDENES_COMPRAS {
@@ -342,8 +461,14 @@ erDiagram
         int pedido_compra_id FK
         int proveedor_id FK
         int usuario_id FK
+        date fecha_orden
+        date fecha_entrega_esperada
+        string condicion_pago "contado | credito_15 | credito_30 | credito_60"
+        decimal subtotal
         decimal total
-        string estado
+        string estado "emitida | recibida | cancelada"
+        text observaciones
+        datetime created_at
     }
 
     ORDENES_COMPRAS_DETALLES {
@@ -351,6 +476,7 @@ erDiagram
         int orden_compra_id FK
         int producto_id FK
         decimal cantidad
+        decimal precio_unitario
         decimal subtotal
     }
 
@@ -359,25 +485,39 @@ erDiagram
         int proveedor_id FK
         int deposito_id FK
         int orden_compra_id FK
+        int usuario_id FK
         string numero_factura
+        string timbrado "12345678"
+        date fecha_compra
         decimal total
+        string condicion "contado | credito"
+        text observaciones
+        datetime created_at
     }
 
     COMPRAS_DETALLES {
         int id PK
         int compra_id FK
         int producto_id FK
+        string codigo_lote
+        date fecha_vencimiento
         decimal cantidad
+        decimal precio_unitario
         decimal subtotal
     }
 
     NOTAS_CREDITO_COMPRAS {
         int id PK
         string numero_nota
+        string timbrado
         int compra_id FK
         int proveedor_id FK
+        int usuario_id FK
+        date fecha_emision
+        string motivo "devolucion_mercaderia | descuento_comercial | error_facturacion | otro"
         decimal total
-        string motivo
+        text observaciones
+        datetime created_at
     }
 
     NOTAS_CREDITO_COMPRAS_DETALLES {
@@ -385,15 +525,22 @@ erDiagram
         int nota_credito_id FK
         int producto_id FK
         decimal cantidad
+        decimal precio_unitario
         decimal subtotal
     }
 
+    %% ==========================================
+    %% MÓDULO 8: SERVICIOS Y PRESUPUESTOS DE EVENTOS
+    %% ==========================================
     SERVICIOS {
         int id PK
         string codigo
         string nombre
+        text descripcion
         decimal precio_sugerido
         string unidad_servicio
+        int estado
+        datetime created_at
     }
 
     PRESUPUESTOS {
@@ -402,14 +549,22 @@ erDiagram
         int cliente_id FK
         int usuario_id FK
         date fecha_emision
+        date fecha_vencimiento
+        decimal subtotal
+        decimal descuento
         decimal total
-        string estado
+        string estado "pendiente | aprobado | rechazado | vencido | facturado"
+        text observaciones
+        datetime created_at
     }
 
     PRESUPUESTOS_DETALLES {
         int id PK
         int presupuesto_id FK
-        string tipo_item
+        string tipo_item "producto | servicio"
+        int producto_id FK
+        int servicio_id FK
+        string descripcion
         decimal cantidad
         decimal precio_unitario
         decimal subtotal
@@ -420,57 +575,91 @@ erDiagram
         string numero_servicio
         int presupuesto_id FK
         int cliente_id FK
+        int usuario_id FK
         date fecha_evento
+        string hora_evento
         string lugar_evento
         decimal total
         decimal senia_pagada
         decimal saldo_pendiente
-        string estado
+        string estado "programado | en_preparacion | entregado | finalizado | cancelado"
+        text observaciones
+        datetime created_at
     }
 
-    USUARIOS ||--o{ AUDITORIA_LOGS : "registra"
+    %% ==========================================
+    %% RELACIONES ENTRE ENTIDADES (CARDINALIDAD)
+    %% ==========================================
+    USUARIOS ||--o{ AUDITORIA_LOGS : "genera traza"
     CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
     UNIDADES_MEDIDA ||--o{ PRODUCTOS : "mide"
     DEPOSITOS ||--o{ STOCK_DEPOSITO : "almacena"
-    PRODUCTOS ||--o{ STOCK_DEPOSITO : "stock"
-    PRODUCTOS ||--o{ LOTES : "lotes"
+    PRODUCTOS ||--o{ STOCK_DEPOSITO : "tiene existencia"
+    PRODUCTOS ||--o{ LOTES : "controla partida"
+    DEPOSITOS ||--o{ LOTES : "ubica partida"
 
-    PRODUCTOS ||--o{ RECETAS : "formula"
-    RECETAS ||--|{ RECETAS_DETALLES : "ingredientes"
-    RECETAS ||--o{ PRODUCCIONES : "elaboracion"
+    PRODUCTOS ||--o{ RECETAS : "elabora producto"
+    RECETAS ||--|{ RECETAS_DETALLES : "requiere insumos"
+    PRODUCTOS ||--o{ RECETAS_DETALLES : "utilizado como insumo"
+    RECETAS ||--o{ PRODUCCIONES : "guia elaboracion"
+    USUARIOS ||--o{ PRODUCCIONES : "supervisa panadero"
+    DEPOSITOS ||--o{ PRODUCCIONES : "origen materia prima"
+    DEPOSITOS ||--o{ PRODUCCIONES : "destino panificado"
 
-    DEPOSITOS ||--o{ TRANSFERENCIAS : "transferencia"
-    TRANSFERENCIAS ||--|{ TRANSFERENCIAS_DETALLES : "items"
-    AJUSTES_STOCK ||--|{ AJUSTES_DETALLES : "diferencias"
-    PRODUCTOS ||--o{ KARDEX : "movimientos"
+    DEPOSITOS ||--o{ TRANSFERENCIAS : "origen / destino"
+    USUARIOS ||--o{ TRANSFERENCIAS : "autoriza traslado"
+    TRANSFERENCIAS ||--|{ TRANSFERENCIAS_DETALLES : "detalla items"
+    AJUSTES_STOCK ||--|{ AJUSTES_DETALLES : "detalla diferencias"
+    USUARIOS ||--o{ AJUSTES_STOCK : "responsable recuento"
+    DEPOSITOS ||--o{ AJUSTES_STOCK : "aplica en"
+    PRODUCTOS ||--o{ KARDEX : "movimiento fisico"
+    DEPOSITOS ||--o{ KARDEX : "saldo en almacen"
+    USUARIOS ||--o{ KARDEX : "operador movimiento"
 
-    CAJAS ||--o{ SESIONES_CAJA : "caja"
-    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "movimientos"
-    SESIONES_CAJA ||--o{ VENTAS : "recauda"
-    SESIONES_CAJA ||--o{ COBROS : "cobranzas"
+    CAJAS ||--o{ SESIONES_CAJA : "terminal de operacion"
+    USUARIOS ||--o{ SESIONES_CAJA : "cajero responsable"
+    SESIONES_CAJA ||--o{ MOVIMIENTOS_CAJA : "arquea gastos/ingresos"
+    USUARIOS ||--o{ MOVIMIENTOS_CAJA : "registra movimiento"
+    SESIONES_CAJA ||--o{ VENTAS : "recauda ingresos POS"
+    SESIONES_CAJA ||--o{ COBROS : "ingresa efectivo cobranza"
 
-    CLIENTES ||--o{ VENTAS : "factura"
-    VENTAS ||--|{ VENTAS_DETALLES : "items"
-    VENTAS ||--o{ CUENTAS_COBRAR : "credito"
-    CUENTAS_COBRAR ||--o{ COBROS_DETALLES : "cuota"
-    COBROS ||--|{ COBROS_DETALLES : "recibo"
+    CLIENTES ||--o{ VENTAS : "adquiere comprobante"
+    USUARIOS ||--o{ VENTAS : "vendedor / cajero emite"
+    DEPOSITOS ||--o{ VENTAS : "despacha stock"
+    VENTAS ||--|{ VENTAS_DETALLES : "contiene items"
+    PRODUCTOS ||--o{ VENTAS_DETALLES : "vendido en linea"
+    VENTAS ||--o{ CUENTAS_COBRAR : "origina saldo a credito"
+    CLIENTES ||--o{ CUENTAS_COBRAR : "mantiene deuda"
+    CUENTAS_COBRAR ||--o{ COBROS_DETALLES : "amortiza cuota"
+    COBROS ||--|{ COBROS_DETALLES : "discrimina pagos"
+    CLIENTES ||--o{ COBROS : "abona recibo oficial"
+    USUARIOS ||--o{ COBROS : "cobrador emite recibo"
 
-    PEDIDOS_COMPRAS ||--|{ PEDIDOS_COMPRAS_DETALLES : "solicitud"
-    PEDIDOS_COMPRAS ||--o{ ORDENES_COMPRAS : "origen"
-    PROVEEDORES ||--o{ ORDENES_COMPRAS : "provee"
-    ORDENES_COMPRAS ||--|{ ORDENES_COMPRAS_DETALLES : "renglones"
-    ORDENES_COMPRAS ||--o{ COMPRAS : "recepcion"
-    PROVEEDORES ||--o{ COMPRAS : "factura"
-    COMPRAS ||--|{ COMPRAS_DETALLES : "lineas"
-    COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "ajuste"
-    NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "devolucion"
+    USUARIOS ||--o{ PEDIDOS_COMPRAS : "panadero solicita insumos"
+    PEDIDOS_COMPRAS ||--|{ PEDIDOS_COMPRAS_DETALLES : "especifica materias primas"
+    PEDIDOS_COMPRAS ||--o{ ORDENES_COMPRAS : "consolida en orden"
+    PROVEEDORES ||--o{ ORDENES_COMPRAS : "recibe orden"
+    USUARIOS ||--o{ ORDENES_COMPRAS : "comprador autoriza"
+    ORDENES_COMPRAS ||--|{ ORDENES_COMPRAS_DETALLES : "lineas autorizadas"
+    ORDENES_COMPRAS ||--o{ COMPRAS : "recibe factura"
+    PROVEEDORES ||--o{ COMPRAS : "factura mercaderia"
+    DEPOSITOS ||--o{ COMPRAS : "ingresa a deposito"
+    USUARIOS ||--o{ COMPRAS : "almacenero recepciona"
+    COMPRAS ||--|{ COMPRAS_DETALLES : "renglones con lote/vencimiento"
+    PRODUCTOS ||--o{ COMPRAS_DETALLES : "materia prima ingresada"
+    COMPRAS ||--o{ NOTAS_CREDITO_COMPRAS : "devolucion de compra"
+    PROVEEDORES ||--o{ NOTAS_CREDITO_COMPRAS : "emite nota credito"
+    USUARIOS ||--o{ NOTAS_CREDITO_COMPRAS : "administra reclamo"
+    NOTAS_CREDITO_COMPRAS ||--|{ NOTAS_CREDITO_COMPRAS_DETALLES : "items devueltos"
 
-    CLIENTES ||--o{ PRESUPUESTOS : "solicita"
-    USUARIOS ||--o{ PRESUPUESTOS : "cotiza"
-    PRESUPUESTOS ||--|{ PRESUPUESTOS_DETALLES : "renglones"
-    SERVICIOS ||--o{ PRESUPUESTOS_DETALLES : "incluye"
-    PRESUPUESTOS ||--o{ PEDIDOS_SERVICIOS : "contrata"
-    CLIENTES ||--o{ PEDIDOS_SERVICIOS : "acuerda"
+    CLIENTES ||--o{ PRESUPUESTOS : "solicita cotizacion"
+    USUARIOS ||--o{ PRESUPUESTOS : "vendedor asesora"
+    PRESUPUESTOS ||--|{ PRESUPUESTOS_DETALLES : "renglones presupuestados"
+    SERVICIOS ||--o{ PRESUPUESTOS_DETALLES : "servicio de catering"
+    PRODUCTOS ||--o{ PRESUPUESTOS_DETALLES : "panificados para evento"
+    PRESUPUESTOS ||--o{ PEDIDOS_SERVICIOS : "convierte a orden"
+    CLIENTES ||--o{ PEDIDOS_SERVICIOS : "contrata evento"
+    USUARIOS ||--o{ PEDIDOS_SERVICIOS : "coordina entrega"
     </div>
   </div>
 
@@ -532,8 +721,8 @@ erDiagram
         const canvas = document.createElement("canvas");
         const scale = 2;
         const bbox = svg.getBoundingClientRect();
-        canvas.width = (bbox.width || 2400) * scale;
-        canvas.height = (bbox.height || 2200) * scale;
+        canvas.width = (bbox.width || 2600) * scale;
+        canvas.height = (bbox.height || 2400) * scale;
 
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#ffffff";
@@ -546,7 +735,7 @@ erDiagram
         const pngUrl = canvas.toDataURL("image/png");
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = "Diagrama_Entidad_Relacion_Panaderia_34Tablas.png";
+        a.download = "Diagrama_Entidad_Relacion_Panaderia_38Tablas.png";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
